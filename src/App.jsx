@@ -966,10 +966,10 @@ function AskPage({ skinProfile }) {
 
 /* ============================== ABOUT US ============================== */
 const TEAM = [
-  { name: "Lucía Martín", role: "Product & Strategy" },
-  { name: "Alejandra Aranguren", role: "Design & UX" },
-  { name: "Zainab El Hassani", role: "Data & AI" },
-  { name: "Marta Villagrán", role: "Growth & Research" },
+  { name: "Marta Villagrán" },
+  { name: "Zainab El Hassani"},
+  { name: "Lucía Martín"},
+  { name: "Alejandra Aranguren"},
 ];
 
 function AboutPage() {
@@ -1003,7 +1003,7 @@ function AboutPage() {
         <h2 className="ss-serif" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Who's behind it</h2>
         <p style={{ color: "var(--ink-soft)", fontSize: 14.5, lineHeight: 1.7 }}>
           SkinScout is built by four MBA candidates at INSEAD with backgrounds in strategy consulting at
-          McKinsey, Bain and BCG. We brought the same structured, evidence-first thinking we used with
+          McKinsey. We brought the same structured, evidence-first thinking we used with
           clients to a category that usually runs on marketing claims instead of data — treating skincare
           comparison as a product and analytics problem, not just a shopping decision.
         </p>
@@ -1016,9 +1016,8 @@ function AboutPage() {
         </div>
         <div style={{ display: "flex", justifyContent: "center", gap: "10px 22px", flexWrap: "wrap", paddingBottom: 8 }}>
           {TEAM.map((member) => (
-            <div key={member.name} style={{ textAlign: "center" }}>
+                       <div key={member.name} style={{ textAlign: "center" }}>
               <div className="ss-serif" style={{ fontWeight: 600, fontSize: 14.5 }}>{member.name}</div>
-              <div style={{ fontSize: 11.5, color: "var(--sage)", fontWeight: 700 }}>{member.role}</div>
             </div>
           ))}
         </div>
