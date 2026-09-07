@@ -1,0 +1,22 @@
+name: Import OBF bulk catalog
+
+# Manual-only trigger — writes ~300-1000 products to Supabase. Can take
+# several minutes (sequential upserts, deliberately not batched/parallelized
+# — see scripts/import-obf-bulk.mjs). Safe to re-run; idempotent.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install
+      - run: node scripts/import-obf-bulk.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
