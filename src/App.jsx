@@ -10,12 +10,21 @@ import ComparePage from "./pages/ComparePage.jsx";
 import MySkinPage from "./pages/MySkinPage.jsx";
 import AskPage from "./pages/AskPage.jsx";
 import AboutPage from "./pages/AboutPage.jsx";
+import SupabaseTestPage from "./pages/SupabaseTestPage.jsx";
+
+// TEMPORARY — remove this check and SupabaseTestPage.jsx once Supabase
+// connectivity has been confirmed. Visiting /?supabase-test=1 bypasses the
+// normal app entirely so this never affects any real page or nav item.
+const IS_SUPABASE_TEST =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).has("supabase-test");
 
 export default function SkinScoutApp() {
   const [view, setView] = useState("home");
   const [selectedId, setSelectedId] = useState(null);
   const [compareIds, setCompareIds] = useState([]);
   const [skinProfile, setSkinProfile] = useState({});
+
+  if (IS_SUPABASE_TEST) return <SupabaseTestPage />;
 
   const onView = (id) => { setSelectedId(id); setView("profile"); window.scrollTo(0, 0); };
   const onCompare = (id, forceRemove) => {
