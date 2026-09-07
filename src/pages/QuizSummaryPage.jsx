@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 import { loadSkinProfile, clearSkinProfile } from "../lib/skinProfile.js";
+import { saveRoutine } from "../lib/routineStorage.js";
 
 const FIELD_LABELS = {
   skinType: "Skin type",
@@ -18,10 +19,32 @@ function formatValue(value) {
 
 export default function QuizSummaryPage({ setView }) {
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setProfile(loadSkinProfile());
   }, []);
+
+  const generateRoutine = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate-routine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Request failed");
+      const routine = await res.json();
+      saveRoutine(routine);
+      setView("routine");
+    } catch (err) {
+      setError("Couldn't generate a routine right now. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!profile) {
     return (
@@ -52,11 +75,17 @@ export default function QuizSummaryPage({ setView }) {
         ))}
       </div>
 
-      <p style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 20, fontStyle: "italic" }}>
-        Routine generation from this profile is coming soon.
-      </p>
+      {error && <div style={{ marginBottom: 14, fontSize: 13, color: "var(--burgundy)" }}>{error}</div>}
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          className="ss-btn ss-btn-primary"
+          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          onClick={generateRoutine}
+          disabled={loading}
+        >
+          <Sparkles size={16} /> {loading ? "Generating your routine…" : "Generate my routine"}
+        </button>
         <button
           className="ss-btn ss-btn-outline"
           onClick={() => {
@@ -66,7 +95,7 @@ export default function QuizSummaryPage({ setView }) {
         >
           Retake quiz
         </button>
-        <button className="ss-btn ss-btn-primary" onClick={() => setView("discover")}>Browse products</button>
+        <button className="ss-btn ss-btn-outline" onClick={() => setView("discover")}>Browse products</button>
       </div>
     </div>
   );

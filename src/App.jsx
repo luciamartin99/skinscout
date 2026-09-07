@@ -12,6 +12,7 @@ import AskPage from "./pages/AskPage.jsx";
 import AboutPage from "./pages/AboutPage.jsx";
 import QuizPage from "./pages/QuizPage.jsx";
 import QuizSummaryPage from "./pages/QuizSummaryPage.jsx";
+import RoutinePage from "./pages/RoutinePage.jsx";
 import SupabaseTestPage from "./pages/SupabaseTestPage.jsx";
 import RankingTestPage from "./pages/RankingTestPage.jsx";
 
@@ -61,6 +62,7 @@ export default function SkinScoutApp() {
       {view === "about" && <AboutPage />}
       {view === "quiz" && <QuizPage setView={setView} />}
       {view === "quiz-summary" && <QuizSummaryPage setView={setView} />}
+      {view === "routine" && <RoutinePage setView={setView} />}
       <Footer />
     </div>
   );
