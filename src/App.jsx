@@ -13,12 +13,20 @@ import AboutPage from "./pages/AboutPage.jsx";
 import QuizPage from "./pages/QuizPage.jsx";
 import QuizSummaryPage from "./pages/QuizSummaryPage.jsx";
 import SupabaseTestPage from "./pages/SupabaseTestPage.jsx";
+import RankingTestPage from "./pages/RankingTestPage.jsx";
 
 // TEMPORARY — remove this check and SupabaseTestPage.jsx once Supabase
 // connectivity has been confirmed. Visiting /?supabase-test=1 bypasses the
 // normal app entirely so this never affects any real page or nav item.
 const IS_SUPABASE_TEST =
   typeof window !== "undefined" && new URLSearchParams(window.location.search).has("supabase-test");
+
+// TEMPORARY — remove this check and RankingTestPage.jsx once the
+// ranking/compatibility engines have been validated. Visiting
+// /?ranking-test=1 bypasses the normal app entirely, same as above; not
+// linked from Home, the quiz, or anywhere in the real user flow.
+const IS_RANKING_TEST =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).has("ranking-test");
 
 export default function SkinScoutApp() {
   const [view, setView] = useState("home");
@@ -27,6 +35,7 @@ export default function SkinScoutApp() {
   const [skinProfile, setSkinProfile] = useState({});
 
   if (IS_SUPABASE_TEST) return <SupabaseTestPage />;
+  if (IS_RANKING_TEST) return <RankingTestPage />;
 
   const onView = (id) => { setSelectedId(id); setView("profile"); window.scrollTo(0, 0); };
   const onCompare = (id, forceRemove) => {
