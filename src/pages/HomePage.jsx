@@ -25,7 +25,8 @@ export default function HomePage({ setView, onCompare, compareIds, onView }) {
           />
         </div>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button className="ss-btn ss-btn-primary" onClick={() => setView("discover")}>Scout products</button>
+          <button className="ss-btn ss-btn-primary" onClick={() => setView("quiz")}>Build My Routine</button>
+          <button className="ss-btn ss-btn-outline" onClick={() => setView("discover")}>Scout products</button>
           <button className="ss-btn ss-btn-outline" onClick={() => setView("compare")}>Compare products</button>
         </div>
       </section>

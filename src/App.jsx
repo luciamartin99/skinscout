@@ -10,6 +10,8 @@ import ComparePage from "./pages/ComparePage.jsx";
 import MySkinPage from "./pages/MySkinPage.jsx";
 import AskPage from "./pages/AskPage.jsx";
 import AboutPage from "./pages/AboutPage.jsx";
+import QuizPage from "./pages/QuizPage.jsx";
+import QuizSummaryPage from "./pages/QuizSummaryPage.jsx";
 import SupabaseTestPage from "./pages/SupabaseTestPage.jsx";
 
 // TEMPORARY — remove this check and SupabaseTestPage.jsx once Supabase
@@ -48,6 +50,8 @@ export default function SkinScoutApp() {
       {view === "myskin" && <MySkinPage skinProfile={skinProfile} setSkinProfile={setSkinProfile} />}
       {view === "ask" && <AskPage skinProfile={skinProfile} />}
       {view === "about" && <AboutPage />}
+      {view === "quiz" && <QuizPage setView={setView} />}
+      {view === "quiz-summary" && <QuizSummaryPage setView={setView} />}
       <Footer />
     </div>
   );
