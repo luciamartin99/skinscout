@@ -46,6 +46,10 @@ export default function QuizPage({ setView }) {
   const isSelected = (value) =>
     current.multi ? (answers[current.key] || []).includes(value) : answers[current.key] === value;
 
+  // Single-select steps (skin type, sensitivity, budget, routine length)
+  // require an answer; multi-select steps (concerns, exclusions) don't.
+  const isAnswered = current.multi || answers[current.key] !== null;
+
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "48px 24px 72px" }}>
       <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--sage)", marginBottom: 8 }}>
@@ -79,10 +83,20 @@ export default function QuizPage({ setView }) {
           >
             <ArrowLeft size={15} /> Back
           </button>
-          <button className="ss-btn ss-btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: 6 }} onClick={next}>
+          <button
+            className="ss-btn ss-btn-primary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: isAnswered ? 1 : 0.5, cursor: isAnswered ? "pointer" : "not-allowed" }}
+            onClick={next}
+            disabled={!isAnswered}
+          >
             {isLast ? "See my profile" : "Next"} {!isLast && <ArrowRight size={15} />}
           </button>
         </div>
+        {!isAnswered && (
+          <div style={{ fontSize: 12.5, color: "var(--ink-soft)", textAlign: "right", marginTop: 8 }}>
+            Please select one option to continue.
+          </div>
+        )}
       </div>
     </div>
   );
