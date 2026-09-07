@@ -1,1 +1,22 @@
+name: Validate OBF sample
+
+# Manual-only trigger. Read-only report — safe to run as often as you like,
+# it never writes to Supabase, so unlike import-obf-sample.yml this only
+# needs the public anon key, not the service-role key.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install
+      - run: node scripts/validate-obf-sample.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
