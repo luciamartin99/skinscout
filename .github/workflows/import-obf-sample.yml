@@ -1,12 +1,7 @@
 name: Import OBF sample
 
-# Manual-only trigger (no push/schedule) — this writes to Supabase, so it
-# should only ever run when a human deliberately clicks "Run workflow" in
-# the GitHub Actions tab. Needed because Node.js isn't available locally
-# yet: GitHub's runners provide Node, and repository secrets keep
-# SUPABASE_SERVICE_ROLE_KEY out of chat, logs, and the repo entirely.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   import:
