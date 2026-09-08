@@ -54,7 +54,7 @@ export function checkRoutineCompatibility(products) {
         warnings.push({
           productAId: pA.id,
           productBId: pB.id,
-          reason: "Ingredient data is incomplete for one or both products — compatibility can't be confirmed.",
+          reason: "We couldn't fully verify the ingredient profile of one product. Consider checking the ingredient list before use.",
         });
         continue;
       }

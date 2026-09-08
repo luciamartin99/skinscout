@@ -17,7 +17,19 @@ function recomputeWarnings(routine) {
     .map((step) => resolveCandidate(routine, step.category, step.product.id))
     .filter(Boolean);
   const compatibility = products.length > 1 ? checkRoutineCompatibility(products) : { warnings: [] };
-  return compatibility.warnings.map((w) => w.reason);
+  // Deduplicated — the same plain-language warning should never repeat.
+  return Array.from(new Set(compatibility.warnings.map((w) => w.reason)));
+}
+
+// Never show the raw internal score — it's a ranking-implementation detail,
+// not something meaningful to the end user (and is often near-identical
+// across candidates right now, which would look confusing as a bare
+// number). A qualitative label conveys the same thing without exposing it.
+function scoreLabel(score) {
+  if (typeof score !== "number") return null;
+  if (score >= 70) return "Strong match";
+  if (score >= 40) return "Good match";
+  return "Potential match";
 }
 
 function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
@@ -44,8 +56,8 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
           <div className="ss-serif" style={{ fontSize: 16.5, fontWeight: 600, lineHeight: 1.25 }}>
             {product ? `${product.brand ? `${product.brand} — ` : ""}${product.name}` : "No suitable product found for this step."}
           </div>
-          {typeof step.score === "number" && (
-            <div style={{ fontSize: 12.5, color: "var(--forest)", fontWeight: 700, margin: "3px 0" }}>Match score: {step.score}/100</div>
+          {scoreLabel(step.score) && (
+            <div style={{ fontSize: 12.5, color: "var(--forest)", fontWeight: 700, margin: "3px 0" }}>{scoreLabel(step.score)}</div>
           )}
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "4px 0 0", lineHeight: 1.5 }}>{step.reason}</p>
         </div>
@@ -75,7 +87,7 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
               }}
             >
               <span>{alt.brand ? `${alt.brand} — ` : ""}{alt.name}</span>
-              <span style={{ color: "var(--ink-soft)" }}>{alt.score}/100</span>
+              <span style={{ color: "var(--ink-soft)" }}>{scoreLabel(alt.score)}</span>
             </button>
           ))}
         </div>
@@ -121,7 +133,10 @@ export default function RoutinePage({ setView }) {
         ...nextSection[index],
         product: { id: alternative.id, name: alternative.name, brand: alternative.brand, image_url: alternative.image_url, barcode: alternative.obf_barcode },
         score: alternative.score,
-        reason: alternative.reasons?.[0] || `Swapped in — top-ranked alternative for ${nextSection[index].category}`,
+        // Never fall back to alternative.reasons here — that's internal
+        // ranking-signal text, not user-facing copy (same principle as
+        // api/generate-routine.js's FALLBACK_REASON).
+        reason: `A well-matched ${nextSection[index].category} for your profile.`,
       };
       const next = { ...prev, [sectionKey]: nextSection };
       next.warnings = recomputeWarnings(next);

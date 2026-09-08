@@ -14,8 +14,19 @@
 // to find a matching entry in candidateDetails, producing
 // "(product unavailable)". Every step in the response is guaranteed to
 // wrap a real product fetched from Supabase, or the step is omitted with
-// an explanatory warning — never a fabricated ID, name, brand, image, or
+// a plain-language warning — never a fabricated ID, name, brand, image, or
 // price.
+//
+// User-facing text is kept strictly free of implementation details: our
+// internal per-candidate `reasons` (e.g. "No skin-type fit data yet for dry
+// skin") are NEVER sent to Claude and NEVER shown to the user — they were
+// previously fed to Claude as candidate context, and Claude ended up
+// echoing/paraphrasing them straight into its own "warnings", which we then
+// displayed verbatim (hence things like "All candidate scores are equal due
+// to limited skin-type and concern-fit data"). Claude only ever sees
+// id/name/brand/score/category now, and is explicitly told not to mention
+// scores or data limitations in its prose. All the internal diagnostics
+// still go to server logs (Part 6) — see the console.log calls below.
 //
 // Per explicit product decision: this NEW flow has no mock/fake-routine
 // fallback. If Supabase or Claude fails, the whole request fails with a
@@ -37,6 +48,19 @@ const ROUTINE_STRUCTURE = {
   evening: ["cleanser", "treatment", "moisturizer"],
 };
 
+// Plain-language, non-technical messages for a step that had to be omitted
+// because no real candidate exists for that category — never mentions
+// scores, fit data, or catalogue internals (Part 1 + Part 3).
+const OMITTED_STEP_MESSAGES = {
+  cleanser: "We couldn't find a strong cleanser match for your profile, so we've left this step out.",
+  serum: "We couldn't find a strong serum match for your profile, so we've kept your routine simple.",
+  treatment: "We couldn't find a strong treatment match for your profile, so we've kept your routine simple.",
+  moisturizer: "We couldn't find a strong moisturizer match, so we haven't forced a recommendation.",
+  sunscreen: "We couldn't find a strong sunscreen match for your profile, so we've left this step out.",
+};
+
+const FALLBACK_REASON = (category) => `A well-matched ${category} for your profile.`;
+
 function toCanonicalProduct(candidate) {
   return {
     id: candidate.id,
@@ -48,7 +72,7 @@ function toCanonicalProduct(candidate) {
 }
 
 async function callClaudeForRoutine(candidatesByCategory, profile, apiKey) {
-  const systemPrompt = `You are SkinScout's routine-building assistant. You may ONLY select products from the candidate list provided in the user message — never invent a product, brand, ingredient, price, or category, and never diagnose a skin condition or make a medical claim. For each pick, copy its "id" and "category" EXACTLY, character-for-character, from the candidate list — never modify, guess, or combine category labels (e.g. never write something like "Moisturizer / SPF"; use exactly one of the candidate list's own category values). Respect the user's exclusions. Respond with ONLY a raw JSON object (no markdown fences, no preamble) matching exactly this shape: {"profileSummary": string, "picks": [{"category": string, "productId": string, "reason": string}], "warnings": [string]}. Include at most one pick per category. If a category has no good candidate for this user, omit it from "picks" rather than inventing one.`;
+  const systemPrompt = `You are SkinScout's routine-building assistant, writing directly for the end user. You may ONLY select products from the candidate list provided in the user message — never invent a product, brand, ingredient, price, or category, and never diagnose a skin condition or make a medical claim. For each pick, copy its "id" and "category" EXACTLY, character-for-character, from the candidate list — never modify, guess, or combine category labels (e.g. never write something like "Moisturizer / SPF"; use exactly one of the candidate list's own category values). Respect the user's exclusions. Write "reason" and "profileSummary" as short, warm, plain-language sentences for the end user — NEVER mention scores, data completeness, "candidates", fit data, or any other internal/technical detail; base each reason only on the product's name/brand/category and the user's stated skin type, concerns, sensitivity, and exclusions. Respond with ONLY a raw JSON object (no markdown fences, no preamble) matching exactly this shape: {"profileSummary": string, "picks": [{"category": string, "productId": string, "reason": string}], "warnings": [string]}. Include at most one pick per category. If a category has no good candidate for this user, omit it from "picks" rather than inventing one. Leave "warnings" as an empty array unless there is a genuine, plain-language safety note the user needs (e.g. a routine-timing caution) — never use it to comment on data availability or candidate quality.`;
 
   const userPrompt = `User profile: ${JSON.stringify(profile)}\n\nCandidate products by category (ranked, ONLY choose from these):\n${JSON.stringify(candidatesByCategory)}`;
 
@@ -94,9 +118,14 @@ export default async function handler(req, res) {
     for (const c of list) candidateIndex.set(c.id, c);
   }
 
+  // Compact copy for Claude — deliberately drops `reasons` and `ingredients`.
+  // Sending our internal ranking-signal strings (e.g. "No skin-type fit
+  // data yet") is what previously caused Claude to paraphrase them into
+  // user-facing text. Claude gets only what it needs to pick sensibly and
+  // write its own prose: id/name/brand/score/category.
   const compactCandidates = {};
   for (const [category, list] of Object.entries(candidatesByCategory)) {
-    compactCandidates[category] = list.map(({ id, name, brand, score, reasons, category: cat }) => ({ id, name, brand, score, reasons, category: cat }));
+    compactCandidates[category] = list.map(({ id, name, brand, score, category: cat }) => ({ id, name, brand, score, category: cat }));
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -119,7 +148,11 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: GENERIC_ERROR });
   }
 
+  // --- Debug diagnostics (server logs only — Part 6). Never sent to the client. ---
   console.log("Claude selected:", JSON.stringify(claudeResponse.picks.map((p) => ({ category: p?.category, productId: p?.productId }))));
+  if (claudeResponse.warnings?.length) {
+    console.log("Claude's own warnings (internal only, never shown to user):", JSON.stringify(claudeResponse.warnings));
+  }
 
   // Validate every pick against the REAL candidate index. A pick's category
   // is taken from OUR candidate record, never from Claude's own text.
@@ -141,20 +174,24 @@ export default async function handler(req, res) {
 
   // Build each section from the predictable template — try Claude's valid
   // pick for that slot first, else fall back to the top-ranked real
-  // candidate ("try the next ranked valid candidate where possible"),
-  // else omit the step with an explanation. Never invents a step.
+  // candidate ("try the next ranked valid candidate where possible"), else
+  // omit the step with a plain-language explanation. Never invents a step,
+  // and never fills one category's slot with a product from another
+  // category (candidatesByCategory is already scoped correctly per category).
   const structureWarnings = [];
   const buildSection = (categories) => {
     const steps = [];
     for (const category of categories) {
       const candidates = candidatesByCategory[category] || [];
       if (candidates.length === 0) {
-        structureWarnings.push(`No strong match found for this step (${category}).`);
+        structureWarnings.push(OMITTED_STEP_MESSAGES[category] || `We couldn't find a strong ${category} match for your profile.`);
         continue;
       }
       const claudePick = pickByCategory.get(category);
       const chosen = claudePick ? claudePick.candidate : candidates[0];
-      const reason = claudePick?.reason || chosen.reasons?.[0] || `Top-ranked ${category} for your profile`;
+      // Never fall back to our internal `reasons` array here — that's the
+      // technical ranking-signal text, not user-facing copy.
+      const reason = claudePick?.reason || FALLBACK_REASON(category);
       steps.push({ step: steps.length + 1, category, product: toCanonicalProduct(chosen), score: chosen.score, reason });
     }
     return steps;
@@ -167,12 +204,12 @@ export default async function handler(req, res) {
   const allChosenCandidates = [...morning, ...evening].map((s) => candidateIndex.get(s.product.id)).filter(Boolean);
   const compatibility = allChosenCandidates.length > 1 ? checkRoutineCompatibility(allChosenCandidates) : { warnings: [] };
 
-  const warnings = [
-    ...structureWarnings,
-    ...compatibility.warnings.map((w) => w.reason),
-    ...rejectedIds.map((id) => `Removed an invalid product suggestion (id "${id}" not found in candidate list).`),
-    ...(claudeResponse.warnings || []),
-  ];
+  // User-facing warnings: structural omissions + compatibility notes only.
+  // Claude's own "warnings" and the rejected-id list are deliberately
+  // excluded here — both are internal/technical (see the console.log calls
+  // above for where that information actually goes). Deduplicated so the
+  // same message never appears twice (Part 5).
+  const warnings = Array.from(new Set([...structureWarnings, ...compatibility.warnings.map((w) => w.reason)]));
 
   return res.status(200).json({
     profileSummary: claudeResponse.profileSummary || "",

@@ -40,13 +40,25 @@ export const ROUTINE_CATEGORIES = ["cleanser", "serum", "treatment", "moisturize
 // conservative keyword list (not a fuzzy/ML classifier) — a product that
 // matches none of these stays uncategorized (null) rather than being
 // force-fit into the wrong slot.
+//
+// sunscreen requires STRONG, specific evidence (SPF/sun-protection
+// language). moisturizer deliberately does NOT include bare "cream" or
+// "lotion" — those words alone appear on sunscreens constantly ("sun
+// cream", "sunscreen lotion"), which previously let real sunscreens get
+// bucketed as moisturizer. moisturizer now requires moisturizer-specific
+// wording instead.
 const CATEGORY_KEYWORDS = {
   cleanser: ["cleanser", "cleansers", "cleansing", "face wash", "facial wash", "wash", "micellar", "makeup remover"],
   serum: ["serum", "serums", "essence", "ampoule"],
   treatment: ["treatment", "treatments", "spot treatment", "exfoliant", "exfoliator", "peel", "acne", "blemish", "mask", "retinol", "retinal"],
-  moisturizer: ["moisturizer", "moisturiser", "moisturizers", "moisturisers", "face cream", "cream", "lotion", "balm", "emulsion"],
-  sunscreen: ["sunscreen", "sunscreens", "sun protection", "sun cream", "sun care", "spf", "sun block"],
+  sunscreen: ["sunscreen", "sunscreens", "sun protection", "sun cream", "sun care", "sun block", "spf", "uv protection", "broad spectrum"],
+  moisturizer: ["moisturizer", "moisturiser", "moisturizers", "moisturisers", "face moisturizer", "face moisturiser", "hydrating cream", "hydration cream", "day cream", "night cream", "day moisturizer", "night moisturizer"],
 };
+
+// Check sunscreen BEFORE moisturizer: a product tagged with both SPF and
+// moisturizing language (e.g. "hydrating sun cream") goes to sunscreen, not
+// moisturizer — a sunscreen must never fill the moisturizer routine slot.
+const CATEGORY_CHECK_ORDER = ["cleanser", "serum", "treatment", "sunscreen", "moisturizer"];
 
 // THE single canonical-category function, per the app-wide requirement that
 // every layer (ranking, generate-routine, the routine page, swap, any
@@ -57,7 +69,7 @@ const CATEGORY_KEYWORDS = {
 // a bucket.
 export function normalizeProductCategory(product) {
   const haystack = `${product.raw_categories_text || ""} ${product.name || ""}`.toLowerCase();
-  for (const category of ROUTINE_CATEGORIES) {
+  for (const category of CATEGORY_CHECK_ORDER) {
     if (CATEGORY_KEYWORDS[category].some((kw) => haystack.includes(kw))) return category;
   }
   return null;
