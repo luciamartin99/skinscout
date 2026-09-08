@@ -55,7 +55,7 @@ export default async function handler(req, res) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data: rows, error } = await supabase
     .from("products")
-    .select("id, obf_barcode, name, image_url, raw_categories_text, brands(name), product_ingredients(position)")
+    .select("id, obf_barcode, name, image_url, raw_categories_text, brands(name), product_ingredients(position, ingredients(canonical_name))")
     .eq("source", "open_beauty_facts")
     .limit(MAX_FETCH);
 
@@ -66,6 +66,11 @@ export default async function handler(req, res) {
 
   console.log(`api/products: fetched ${rows?.length || 0} row(s) from Supabase; filters: page=${page} pageSize=${pageSize} search="${search}" category="${category}" sort=${sortBy}`);
 
+  // Ingredient NAMES (not just a count) are included here, not so the UI
+  // shows an ingredient count/list directly, but so the client can run
+  // src/lib/productScoring.js's deterministic scores against the user's
+  // live skin profile (which lives in localStorage — the server has no
+  // access to it on a plain GET listing request).
   let items = (rows || []).map((row) => ({
     id: row.id,
     barcode: row.obf_barcode,
@@ -73,7 +78,10 @@ export default async function handler(req, res) {
     image_url: row.image_url,
     brand: row.brands?.name || null,
     category: normalizeProductCategory({ raw_categories_text: row.raw_categories_text, name: row.name }),
-    ingredientCount: (row.product_ingredients || []).length,
+    ingredients: (row.product_ingredients || [])
+      .sort((a, b) => a.position - b.position)
+      .map((pi) => pi.ingredients?.canonical_name)
+      .filter(Boolean),
   }));
 
   if (search) {

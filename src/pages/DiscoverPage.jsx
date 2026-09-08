@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Search, Filter, Sparkles } from "lucide-react";
 import FilterSelect from "../components/FilterSelect.jsx";
+import ScorePill from "../components/ScorePill.jsx";
+import ScoreBar from "../components/ScoreBar.jsx";
 import { loadRoutine } from "../lib/routineStorage.js";
+import { loadSkinProfile } from "../lib/skinProfile.js";
+import { calculateOverallScore } from "../lib/productScoring.js";
 
 const CATEGORY_OPTIONS = ["All", "cleanser", "serum", "treatment", "moisturizer", "sunscreen"];
 const SORT_OPTIONS = ["A–Z", "Brand"];
@@ -36,23 +40,22 @@ function ProductImage({ src, name, size = 64 }) {
   );
 }
 
-function CompareButton({ active, disabled, onClick }) {
+function CompareButton({ active, disabled, onClick, style }) {
   return (
     <button
       className="ss-btn"
-      style={{ flex: 1, fontSize: 13.5, padding: "10px 14px", background: active ? "var(--burgundy)" : "var(--beige)", color: active ? "#fff" : "var(--ink)", opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+      style={{ flex: 1, fontSize: 13.5, padding: "10px 14px", background: active ? "var(--burgundy)" : "var(--beige)", color: active ? "#fff" : "var(--ink)", opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer", ...style }}
       onClick={onClick}
       disabled={disabled}
     >
-      {active ? "Remove" : "Add to Compare"}
+      {active ? "Remove" : "Add to comparison"}
     </button>
   );
 }
 
 // Compact card for the "From your routine" strip — smaller than the main
 // catalog card so this section stays a secondary, glanceable summary
-// rather than competing with "All products" below it. Still supports
-// Add/Remove Compare, using the exact same real product id.
+// rather than competing with "All products" below it.
 function RoutineProductCard({ product, compareActive, onCompare, compareFull }) {
   return (
     <div className="ss-card" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -68,12 +71,15 @@ function RoutineProductCard({ product, compareActive, onCompare, compareFull }) 
   );
 }
 
-// Same footprint as the original ProductCard (64px image, padding 16, gap
-// 12, same typography), with fictional-data rows (score, tags, stat bars)
-// omitted rather than faked — replaced by real category/ingredient-count
-// chips and a real "Add to Compare" action in the same footer position.
-function RealProductCard({ product, compareActive, onCompare, compareFull }) {
-  const subtitleParts = [product.category, product.barcode].filter(Boolean);
+// Restores the original SkinScout card layout: image + brand/name at top
+// with an overall score pill, three deterministic parameter bars in the
+// middle (src/lib/productScoring.js — real ingredient data, never the old
+// fictional 0-100 values), and View profile / Add to comparison at the
+// bottom. No ingredient count shown as a headline number.
+function RealProductCard({ product, profile, compareActive, onCompare, compareFull, onView }) {
+  const overall = useMemo(() => calculateOverallScore(product, profile), [product, profile]);
+  const components = new Map((overall.components || []).map((c) => [c.key, c.score]));
+
   return (
     <div
       className="ss-card ss-fade"
@@ -86,25 +92,30 @@ function RealProductCard({ product, compareActive, onCompare, compareFull }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--sage)", letterSpacing: 0.2 }}>{product.brand || "Unknown brand"}</div>
           <div className="ss-serif" style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.2 }}>{product.name}</div>
-          {subtitleParts.length > 0 && (
-            <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 2 }}>{subtitleParts.join(" · ")}</div>
-          )}
+          {product.category && <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 2 }}>{product.category}</div>}
         </div>
+        {typeof overall.score === "number" ? (
+          <ScorePill score={overall.score} />
+        ) : (
+          <span style={{ fontSize: 11, color: "var(--ink-soft)", fontStyle: "italic", whiteSpace: "nowrap" }}>Limited data</span>
+        )}
       </div>
-      {product.ingredientCount > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          <span className="ss-chip">{product.ingredientCount} ingredients listed</span>
-        </div>
-      )}
+      <div>
+        <ScoreBar label="Hydration" score={components.get("hydration")} />
+        <ScoreBar label="Formula profile" score={components.get("formulaProfile")} />
+        <ScoreBar label="Sensitive-skin fit" score={components.get("sensitiveSkinFit")} />
+      </div>
       <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+        <button className="ss-btn ss-btn-primary" style={{ flex: 1, fontSize: 13.5, padding: "10px 14px" }} onClick={() => onView(product.id)}>View profile</button>
         <CompareButton active={compareActive} disabled={!compareActive && compareFull} onClick={() => onCompare(product.id)} />
       </div>
     </div>
   );
 }
 
-export default function DiscoverPage({ onCompare, compareIds, setView }) {
+export default function DiscoverPage({ onCompare, compareIds, setView, onView }) {
   const routineProducts = useMemo(getRoutineProducts, []);
+  const skinProfile = useMemo(loadSkinProfile, []);
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -217,7 +228,15 @@ export default function DiscoverPage({ onCompare, compareIds, setView }) {
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
             {result.products.map((p) => (
-              <RealProductCard key={p.id} product={p} compareActive={compareIds.includes(p.id)} onCompare={onCompare} compareFull={compareFull} />
+              <RealProductCard
+                key={p.id}
+                product={p}
+                profile={skinProfile}
+                compareActive={compareIds.includes(p.id)}
+                onCompare={onCompare}
+                compareFull={compareFull}
+                onView={onView}
+              />
             ))}
             {result.products.length === 0 && (
               <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 60, color: "var(--ink-soft)" }}>

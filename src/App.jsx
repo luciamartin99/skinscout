@@ -2,11 +2,13 @@ import { useState } from "react";
 import { PRODUCTS } from "./data/products.js";
 import { FONTS_CSS } from "./styles/fonts.js";
 import { loadSkinProfile, saveSkinProfile, clearSkinProfile } from "./lib/skinProfile.js";
+import { isRealProductId } from "./lib/productId.js";
 import NavBar from "./components/NavBar.jsx";
 import Footer from "./components/Footer.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import DiscoverPage from "./pages/DiscoverPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import RealProductProfilePage from "./pages/RealProductProfilePage.jsx";
 import ComparePage from "./pages/ComparePage.jsx";
 import MySkinPage from "./pages/MySkinPage.jsx";
 import AskPage from "./pages/AskPage.jsx";
@@ -68,8 +70,13 @@ export default function SkinScoutApp() {
       <style>{FONTS_CSS}</style>
       <NavBar view={view} setView={setView} compareCount={compareIds.length} />
       {view === "home" && <HomePage setView={setView} onCompare={onCompare} compareIds={compareIds} onView={onView} />}
-      {view === "discover" && <DiscoverPage onCompare={onCompare} compareIds={compareIds} setView={setView} />}
-      {view === "profile" && <ProfilePage product={selectedProduct} setView={setView} onCompare={onCompare} compareIds={compareIds} />}
+      {view === "discover" && <DiscoverPage onCompare={onCompare} compareIds={compareIds} setView={setView} onView={onView} />}
+      {view === "profile" && isRealProductId(selectedId) && (
+        <RealProductProfilePage productId={selectedId} setView={setView} onCompare={onCompare} compareIds={compareIds} />
+      )}
+      {view === "profile" && !isRealProductId(selectedId) && (
+        <ProfilePage product={selectedProduct} setView={setView} onCompare={onCompare} compareIds={compareIds} />
+      )}
       {view === "compare" && <ComparePage compareIds={compareIds} setCompareId={onCompare} skinProfile={skinProfile} />}
       {view === "myskin" && <MySkinPage skinProfile={skinProfile} setView={setView} />}
       {view === "ask" && <AskPage skinProfile={skinProfile} />}
