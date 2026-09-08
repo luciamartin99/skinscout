@@ -35,6 +35,7 @@ export const FONTS_CSS = `
 .ss-btn-burgundy{background:var(--burgundy); color:#FFFDFD;}
 .ss-btn-burgundy:hover{box-shadow:0 8px 20px rgba(90,31,53,0.32);}
 .ss-chip{border-radius:8px; padding:7px 14px; font-size:12.5px; font-weight:600; border:1px solid var(--line); background:var(--sage-lt); color:var(--forest-dk); transition:background .18s ease, color .18s ease, border-color .18s ease;}
+.ss-chip:hover{background:var(--blush); border-color:var(--burgundy);}
 .ss-input{border:1.5px solid var(--line); border-radius:10px; padding:11px 14px; font-size:14.5px; background:#fff; width:100%; font-family:'Inter',sans-serif; transition:border-color .18s ease;}
 .ss-input:focus{outline:none; border-color:var(--sage);}
 .ss-input:focus-visible{outline:2px solid var(--forest); outline-offset:1px;}
@@ -65,4 +66,11 @@ export const FONTS_CSS = `
 .ss-option{border-radius:12px; padding:16px 18px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-weight:600; font-size:14.5px; color:var(--ink); transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;}
 .ss-option:hover{border-color:var(--sage); transform:translateY(-1px);}
 .ss-option.selected{background:var(--burgundy); color:#FFFDFD; border-color:var(--burgundy);}
+
+/* "SkinScout is thinking…" — three small bouncing dots, no animation library. */
+.ss-typing{display:inline-flex; gap:3px; margin-left:2px;}
+.ss-typing span{width:5px; height:5px; border-radius:50%; background:var(--ink-soft); display:inline-block; animation:ssTypingBounce 1.2s infinite ease-in-out;}
+.ss-typing span:nth-child(2){animation-delay:0.15s;}
+.ss-typing span:nth-child(3){animation-delay:0.3s;}
+@keyframes ssTypingBounce{0%,80%,100%{transform:translateY(0); opacity:0.4;} 40%{transform:translateY(-3px); opacity:1;}}
 `;

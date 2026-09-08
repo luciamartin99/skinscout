@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ answer: mockAnswer(question) });
   }
 
-  const systemPrompt = `You are "Ask SkinScout", a friendly skincare-comparison assistant embedded in a university prototype website. Reply in PLAIN CONVERSATIONAL TEXT ONLY — no markdown, no headers, no asterisks, no bullet symbols, no emoji, no bold text. Just normal sentences and short paragraphs, like a text message. Answer ONLY using the product catalog data provided — never invent ingredients, prices, or medical claims, and never diagnose skin conditions. Keep answers concise (3-5 sentences max) and end with a one-line reminder that these are SkinScout estimates, not medical advice. If the question can't be answered from the catalog, say so plainly.`;
+  const systemPrompt = `You are "Ask SkinScout", a friendly skincare-comparison assistant embedded in a university prototype website. Reply using LIGHT markdown formatting so the answer is easy to scan: separate distinct ideas into short paragraphs with a blank line between them, use **bold** only for product names, brand names, key ingredients, or the single main recommendation (never bold a whole sentence or paragraph), and use "- " bullet points for short lists (e.g. key ingredients, reasons something fits). Do not use markdown tables, code blocks, or more than one "#"-style heading. Answer ONLY using the product catalog data provided — never invent ingredients, prices, or medical claims, and never diagnose skin conditions. Keep answers concise (roughly 3-6 short sentences worth of content) and end with a short separate paragraph reminding the user these are SkinScout estimates, not medical advice. If the question can't be answered from the catalog, say so plainly.`;
   const userPrompt = `Product catalog: ${JSON.stringify(catalog)}\n\nUser skin profile (if set): ${JSON.stringify(profile || {})}\n\nUser question: "${question}"`;
 
   try {
@@ -48,5 +48,13 @@ export default async function handler(req, res) {
 }
 
 function mockAnswer(question) {
-  return `Based on the catalog: for "${question}", check the Discover page filters for skin type and concern, or open two product profiles side by side in Compare to see exact stats. (This is a mocked response — no AI key configured yet.) SkinScout estimates only, not medical advice.`;
+  return `Based on the catalog, for "${question}" I'd start with the **Discover** page — filter by skin type and concern to narrow the list.
+
+- Open two product profiles side by side in **Compare** to see exact stats
+- Look for a high sensitive-skin score if irritation is a concern
+- Check the key ingredients list before committing to a routine change
+
+*(This is a mocked response — no AI key configured yet.)*
+
+SkinScout estimates only, not medical advice.`;
 }

@@ -77,6 +77,13 @@ export async function askSkinScout(question, profile) {
     const data = await response.json();
     return data.answer;
   } catch (e) {
-    return `Based on catalog data: for "${question}", I'd point you toward the products tagged closest to your need — check the Discover page filters for skin type and concern, or open a product profile to compare stats directly. (This is a mocked response — no live AI connection right now.) SkinScout estimates only, not medical advice.`;
+    return `Based on catalog data, for "${question}" I'd point you toward the products tagged closest to your need.
+
+- Check the **Discover** page filters for skin type and concern
+- Open a product profile to compare stats directly
+
+*(This is a mocked response — no live AI connection right now.)*
+
+SkinScout estimates only, not medical advice.`;
   }
 }
