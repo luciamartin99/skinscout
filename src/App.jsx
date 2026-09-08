@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PRODUCTS } from "./data/products.js";
 import { FONTS_CSS } from "./styles/fonts.js";
+import { loadSkinProfile, saveSkinProfile, clearSkinProfile } from "./lib/skinProfile.js";
 import NavBar from "./components/NavBar.jsx";
 import Footer from "./components/Footer.jsx";
 import HomePage from "./pages/HomePage.jsx";
@@ -33,7 +34,20 @@ export default function SkinScoutApp() {
   const [view, setView] = useState("home");
   const [selectedId, setSelectedId] = useState(null);
   const [compareIds, setCompareIds] = useState([]);
-  const [skinProfile, setSkinProfile] = useState({});
+
+  // Single shared source of truth for the skin profile: localStorage (via
+  // src/lib/skinProfile.js) IS the data, this state is just a React-visible
+  // mirror of it. Every write goes through setSkinProfile below, which
+  // updates both together — nothing else may call saveSkinProfile directly.
+  const [skinProfile, setSkinProfileState] = useState(() => loadSkinProfile() || {});
+  const setSkinProfile = (profile) => {
+    saveSkinProfile(profile);
+    setSkinProfileState(profile);
+  };
+  const clearSharedSkinProfile = () => {
+    clearSkinProfile();
+    setSkinProfileState({});
+  };
 
   if (IS_SUPABASE_TEST) return <SupabaseTestPage />;
   if (IS_RANKING_TEST) return <RankingTestPage />;
@@ -57,11 +71,11 @@ export default function SkinScoutApp() {
       {view === "discover" && <DiscoverPage onView={onView} onCompare={onCompare} compareIds={compareIds} />}
       {view === "profile" && <ProfilePage product={selectedProduct} setView={setView} onCompare={onCompare} compareIds={compareIds} />}
       {view === "compare" && <ComparePage compareIds={compareIds} setCompareId={onCompare} skinProfile={skinProfile} />}
-      {view === "myskin" && <MySkinPage skinProfile={skinProfile} setSkinProfile={setSkinProfile} />}
+      {view === "myskin" && <MySkinPage skinProfile={skinProfile} setView={setView} />}
       {view === "ask" && <AskPage skinProfile={skinProfile} />}
       {view === "about" && <AboutPage />}
-      {view === "quiz" && <QuizPage setView={setView} />}
-      {view === "quiz-summary" && <QuizSummaryPage setView={setView} />}
+      {view === "quiz" && <QuizPage setView={setView} skinProfile={skinProfile} setSkinProfile={setSkinProfile} />}
+      {view === "quiz-summary" && <QuizSummaryPage setView={setView} skinProfile={skinProfile} clearSkinProfile={clearSharedSkinProfile} />}
       {view === "routine" && <RoutinePage setView={setView} />}
       <Footer />
     </div>

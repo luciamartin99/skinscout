@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { saveSkinProfile } from "../lib/skinProfile.js";
 
 const STEPS = [
   { key: "skinType", label: "What's your skin type?", multi: false, options: ["Dry", "Oily", "Combination", "Normal", "Not sure"] },
@@ -11,16 +10,19 @@ const STEPS = [
   { key: "routineLength", label: "How long should your routine be?", multi: false, options: ["Minimal", "Balanced", "Complete"] },
 ];
 
-export default function QuizPage({ setView }) {
+export default function QuizPage({ setView, skinProfile, setSkinProfile }) {
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState({
-    skinType: null,
-    concerns: [],
-    sensitivity: null,
-    exclusions: [],
-    budget: null,
-    routineLength: null,
-  });
+  // Pre-fills from the shared profile when one exists (the "Edit profile"
+  // flow from My Skin) — a blank/cleared profile (e.g. after "Retake quiz")
+  // falls back to empty defaults, same as starting fresh.
+  const [answers, setAnswers] = useState(() => ({
+    skinType: skinProfile?.skinType ?? null,
+    concerns: skinProfile?.concerns ?? [],
+    sensitivity: skinProfile?.sensitivity ?? null,
+    exclusions: skinProfile?.exclusions ?? [],
+    budget: skinProfile?.budget ?? null,
+    routineLength: skinProfile?.routineLength ?? null,
+  }));
 
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
@@ -35,7 +37,7 @@ export default function QuizPage({ setView }) {
 
   const next = () => {
     if (isLast) {
-      saveSkinProfile(answers);
+      setSkinProfile(answers);
       setView("quiz-summary");
     } else {
       setStep((s) => s + 1);

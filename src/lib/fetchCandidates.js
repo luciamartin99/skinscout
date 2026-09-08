@@ -5,12 +5,12 @@
 // any browser-rendered code.
 
 import { createClient } from "@supabase/supabase-js";
-import { rankProducts, ROUTINE_CATEGORIES, inferCategoryBucket } from "./ranking.js";
+import { rankProducts, ROUTINE_CATEGORIES, normalizeProductCategory } from "./ranking.js";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-export async function fetchRankedCandidatesByCategory(profile, { topN = 3, maxProducts = 200 } = {}) {
+export async function fetchRankedCandidatesByCategory(profile, { topN = 3, maxProducts = 400 } = {}) {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Supabase is not configured (missing SUPABASE_URL/SUPABASE_ANON_KEY).");
   }
@@ -47,8 +47,10 @@ export async function fetchRankedCandidatesByCategory(profile, { topN = 3, maxPr
   }));
 
   const result = {};
+  console.log("Candidate counts (after category normalization):");
   for (const category of ROUTINE_CATEGORIES) {
-    const inCategory = products.filter((p) => inferCategoryBucket(p) === category);
+    const inCategory = products.filter((p) => normalizeProductCategory(p) === category);
+    console.log(`  ${category}: ${inCategory.length}`);
     result[category] = rankProducts(inCategory, profile)
       .slice(0, topN)
       .map(({ product, score, reasons }) => ({
@@ -57,6 +59,7 @@ export async function fetchRankedCandidatesByCategory(profile, { topN = 3, maxPr
         name: product.name,
         brand: product.brandName,
         image_url: product.image_url,
+        category, // canonical — one of ROUTINE_CATEGORIES, never Claude's free text
         score,
         reasons,
         ingredients: product.ingredients,

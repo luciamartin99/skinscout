@@ -36,16 +36,26 @@ export const ROUTINE_CATEGORIES = ["cleanser", "serum", "treatment", "moisturize
 // product_attributes.category_id (the "real" derived category) is empty for
 // every OBF-imported product right now, so this reads OBF's own raw
 // category text/name as a stand-in — explicitly a heuristic, not a stored
-// fact, and never written back to the database.
+// fact, and never written back to the database. Deliberately a small,
+// conservative keyword list (not a fuzzy/ML classifier) — a product that
+// matches none of these stays uncategorized (null) rather than being
+// force-fit into the wrong slot.
 const CATEGORY_KEYWORDS = {
-  cleanser: ["cleans", "wash", "micellar", "makeup remover"],
-  serum: ["serum", "essence", "ampoule"],
-  treatment: ["treatment", "spot", "exfoliant", "peel", "acne", "mask", "retinol", "retinal"],
-  moisturizer: ["moistur", "cream", "lotion", "balm", "emulsion"],
-  sunscreen: ["sun protect", "sunscreen", "spf", "sun cream", "sun care"],
+  cleanser: ["cleanser", "cleansers", "cleansing", "face wash", "facial wash", "wash", "micellar", "makeup remover"],
+  serum: ["serum", "serums", "essence", "ampoule"],
+  treatment: ["treatment", "treatments", "spot treatment", "exfoliant", "exfoliator", "peel", "acne", "blemish", "mask", "retinol", "retinal"],
+  moisturizer: ["moisturizer", "moisturiser", "moisturizers", "moisturisers", "face cream", "cream", "lotion", "balm", "emulsion"],
+  sunscreen: ["sunscreen", "sunscreens", "sun protection", "sun cream", "sun care", "spf", "sun block"],
 };
 
-export function inferCategoryBucket(product) {
+// THE single canonical-category function, per the app-wide requirement that
+// every layer (ranking, generate-routine, the routine page, swap, any
+// filtering) agree on one of exactly: cleanser, serum, treatment,
+// moisturizer, sunscreen — never a combined/free-text label like
+// "Moisturizer / SPF". Returns null when no keyword matches, rather than
+// guessing — callers must treat null as "uncategorized", not force it into
+// a bucket.
+export function normalizeProductCategory(product) {
   const haystack = `${product.raw_categories_text || ""} ${product.name || ""}`.toLowerCase();
   for (const category of ROUTINE_CATEGORIES) {
     if (CATEGORY_KEYWORDS[category].some((kw) => haystack.includes(kw))) return category;
@@ -93,7 +103,7 @@ export function scoreProduct(product, profile = {}) {
   const hasIngredientData = names.length > 0;
 
   // 1. Category — do we even know what kind of product this is?
-  const bucket = inferCategoryBucket(product);
+  const bucket = normalizeProductCategory(product);
   if (bucket) {
     score += RANKING_WEIGHTS.categoryMatch;
     reasons.push(`Categorized as ${bucket} from catalog data`);
@@ -228,6 +238,6 @@ export function rankProducts(products, profile = {}) {
 }
 
 export function getTopProductsByCategory(products, profile, category, limit = 3) {
-  const inCategory = products.filter((p) => inferCategoryBucket(p) === category);
+  const inCategory = products.filter((p) => normalizeProductCategory(p) === category);
   return rankProducts(inCategory, profile).slice(0, limit);
 }

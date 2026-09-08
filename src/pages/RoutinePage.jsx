@@ -3,17 +3,18 @@ import { AlertTriangle, Sun, Moon, RefreshCw } from "lucide-react";
 import { loadRoutine, saveRoutine } from "../lib/routineStorage.js";
 import { checkRoutineCompatibility } from "../lib/compatibility.js";
 
-function findCandidate(routine, category, productId) {
+// Recomputes warnings from scratch based on the routine's CURRENT products
+// (after any swaps) — "run compatibility check again", never a full
+// regeneration via Claude. Uses candidateDetails (real Supabase records,
+// including ingredients) as the source for each step's full product data.
+function resolveCandidate(routine, category, productId) {
   return (routine.candidateDetails?.[category] || []).find((c) => c.id === productId) || null;
 }
 
-// Recomputes warnings from scratch based on the routine's CURRENT products
-// (after any swaps) — "run compatibility check again", never a full
-// regeneration via Claude.
 function recomputeWarnings(routine) {
   const allSteps = [...(routine.morning || []), ...(routine.evening || [])];
   const products = allSteps
-    .map((step) => findCandidate(routine, step.category, step.productId))
+    .map((step) => resolveCandidate(routine, step.category, step.product.id))
     .filter(Boolean);
   const compatibility = products.length > 1 ? checkRoutineCompatibility(products) : { warnings: [] };
   return compatibility.warnings.map((w) => w.reason);
@@ -21,17 +22,17 @@ function recomputeWarnings(routine) {
 
 function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
   const [showAlts, setShowAlts] = useState(false);
-  const candidate = findCandidate(routine, step.category, step.productId);
+  const { product } = step;
   const alternatives = (routine.candidateDetails?.[step.category] || [])
-    .filter((c) => c.id !== step.productId)
+    .filter((c) => c.id !== product?.id)
     .slice(0, 3);
 
   return (
     <div className="ss-card ss-fade" style={{ padding: 16, marginBottom: 14 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 12, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {candidate?.image_url ? (
-            <img src={candidate.image_url} alt={candidate.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          {product?.image_url ? (
+            <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           ) : (
             <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>No image</span>
           )}
@@ -41,10 +42,10 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
             Step {step.step} · {step.category}
           </div>
           <div className="ss-serif" style={{ fontSize: 16.5, fontWeight: 600, lineHeight: 1.25 }}>
-            {candidate?.brand ? `${candidate.brand} — ` : ""}{candidate?.name || "(product unavailable)"}
+            {product ? `${product.brand ? `${product.brand} — ` : ""}${product.name}` : "No suitable product found for this step."}
           </div>
-          {typeof candidate?.score === "number" && (
-            <div style={{ fontSize: 12.5, color: "var(--forest)", fontWeight: 700, margin: "3px 0" }}>Match score: {candidate.score}/100</div>
+          {typeof step.score === "number" && (
+            <div style={{ fontSize: 12.5, color: "var(--forest)", fontWeight: 700, margin: "3px 0" }}>Match score: {step.score}/100</div>
           )}
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: "4px 0 0", lineHeight: 1.5 }}>{step.reason}</p>
         </div>
@@ -62,7 +63,7 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
 
       {showAlts && (
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-          {alternatives.length === 0 && <p style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>No alternatives available for this category.</p>}
+          {alternatives.length === 0 && <p style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>No suitable alternatives found.</p>}
           {alternatives.map((alt) => (
             <button
               key={alt.id}
@@ -110,15 +111,16 @@ export default function RoutinePage({ setView }) {
     );
   }
 
-  // Local swap only — never calls Claude again. Replaces the productId/reason
-  // at [sectionKey][index], then recomputes compatibility warnings from the
-  // routine's current products and persists the result.
+  // Local swap only — never calls Claude again. Replaces the product at
+  // [sectionKey][index] with a real candidate already loaded in
+  // candidateDetails, recomputes compatibility, and persists the result.
   const handleSwap = (sectionKey, index, alternative) => {
     setRoutine((prev) => {
       const nextSection = [...(prev[sectionKey] || [])];
       nextSection[index] = {
         ...nextSection[index],
-        productId: alternative.id,
+        product: { id: alternative.id, name: alternative.name, brand: alternative.brand, image_url: alternative.image_url, barcode: alternative.obf_barcode },
+        score: alternative.score,
         reason: alternative.reasons?.[0] || `Swapped in — top-ranked alternative for ${nextSection[index].category}`,
       };
       const next = { ...prev, [sectionKey]: nextSection };
