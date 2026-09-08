@@ -1,5 +1,6 @@
 import { PRODUCTS, STAT_META } from "../data/products.js";
 import { isRealProductId } from "./productId.js";
+import { buildDeterministicComparisonReport } from "./productScoring.js";
 
 /* ============================== AI LAYER ==============================
    The browser NEVER talks to the AI provider directly. It calls our own
@@ -32,27 +33,24 @@ export function localMockReport(a, b, profile) {
   };
 }
 
-// Client-side fallback for REAL products (no .stats to score against) —
-// used only if the /api/generate-report request itself fails to reach the
-// server (network error). Purely ingredient-overlap based, same as the
-// server's own buildRealMockReport, and never invents a value.
-function localRealMockReport(a, b) {
-  const namesA = new Set((a.ingredients || []).map((n) => n.toLowerCase()));
-  const namesB = new Set((b.ingredients || []).map((n) => n.toLowerCase()));
-  const shared = [...namesA].filter((n) => namesB.has(n));
-  return {
-    summary: shared.length > 0
-      ? `${a.brand || a.name} and ${b.brand || b.name} share ${shared.length} listed ingredient${shared.length === 1 ? "" : "s"}; the rest of each formula is different.`
-      : `${a.name} and ${b.name} have no overlapping listed ingredients based on the data available.`,
-    sharedIngredients: shared,
-    disclaimer: "SkinScout provides general product-comparison information and does not replace professional medical advice. Individual reactions may vary. Patch-test new products and consult a qualified professional for persistent skin concerns.",
-  };
+const DISCLAIMER =
+  "SkinScout provides general product-comparison information and does not replace professional medical advice. Individual reactions may vary. Patch-test new products and consult a qualified professional for persistent skin concerns.";
+
+// Client-side fallback for REAL products — used only if the
+// /api/generate-report request itself fails to reach the server (network
+// error). Shares the exact same deterministic logic as the server's own
+// fallback (src/lib/productScoring.js's buildDeterministicComparisonReport),
+// so the two can never drift apart or disagree.
+function localRealMockReport(a, b, profile) {
+  const report = buildDeterministicComparisonReport(a, b, profile, DISCLAIMER);
+  const { statsA, statsB, overallA, overallB, ...clientReport } = report;
+  return clientReport;
 }
 
 export async function generateScoutingReport(a, b, profile) {
   const real = isRealProductId(a.id) && isRealProductId(b.id);
   const body = real
-    ? { productAId: a.id, productBId: b.id }
+    ? { productAId: a.id, productBId: b.id, profile }
     : { productA: a, productB: b, profile };
   try {
     const response = await fetch("/api/generate-report", {
@@ -63,7 +61,7 @@ export async function generateScoutingReport(a, b, profile) {
     if (!response.ok) throw new Error("Request failed");
     return await response.json();
   } catch (e) {
-    return real ? localRealMockReport(a, b) : localMockReport(a, b, profile);
+    return real ? localRealMockReport(a, b, profile) : localMockReport(a, b, profile);
   }
 }
 

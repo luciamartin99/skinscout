@@ -11,11 +11,13 @@
 //
 // 1. REAL products (productAId/productBId are real Supabase uuids): the
 //    browser is NOT trusted with product detail. Canonical products
-//    (including their real ingredient list) are fetched server-side via
-//    fetchProductsByIds() and the comparison is built ONLY from that —
-//    Claude never sees or invents a score/price/characteristic, only the
-//    real ingredient lists, and can only describe differences actually
-//    present in them.
+//    (including their real ingredient lists) are fetched server-side via
+//    fetchProductsByIds(), then every stat/score/skin-type-signal is
+//    computed deterministically via src/lib/productScoring.js — the SAME
+//    engine Discover and Compare's cards already use. Only those VERIFIED
+//    numbers and real ingredient names are sent to Claude; it is
+//    explicitly told it may explain them but never override, recompute,
+//    or invent one.
 // 2. LEGACY mock products (the 12 fictional catalog entries, still used by
 //    Home's "Top performers" section): unchanged from before — the
 //    browser sends the full mock product objects (including their
@@ -23,6 +25,7 @@
 
 import { fetchProductsByIds } from "../src/lib/canonicalProducts.js";
 import { isRealProductId } from "../src/lib/productId.js";
+import { extractKeyIngredients, deriveBestSkinTypes, buildDeterministicComparisonReport } from "../src/lib/productScoring.js";
 
 const DISCLAIMER =
   "SkinScout provides general product-comparison information and does not replace professional medical advice. Individual reactions may vary. Patch-test new products and consult a qualified professional for persistent skin concerns.";
@@ -50,14 +53,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "One or both products couldn't be found." });
     }
 
+    // Deterministic report — computed ONCE here, server-side, using the
+    // exact same engine Discover/Compare's cards use (shared with
+    // src/lib/ai.js's client-side fallback, so the two can't drift apart).
+    const deterministic = buildDeterministicComparisonReport(a, b, profile, DISCLAIMER);
+    const keyIngredientsA = extractKeyIngredients(a).items;
+    const keyIngredientsB = extractKeyIngredients(b).items;
+    const bestForA = deriveBestSkinTypes(a).items;
+    const bestForB = deriveBestSkinTypes(b).items;
+
     if (!apiKey) {
-      return res.status(200).json(buildRealMockReport(a, b));
+      return res.status(200).json(stripInternalFields(deterministic));
     }
     try {
-      return res.status(200).json(await callClaudeForRealReport(a, b, apiKey));
+      return res.status(200).json(await callClaudeForRealReport(a, b, profile, deterministic, keyIngredientsA, keyIngredientsB, bestForA, bestForB, apiKey));
     } catch (err) {
       console.error("generate-report (real): Claude call failed:", err.message);
-      return res.status(200).json(buildRealMockReport(a, b));
+      return res.status(200).json(stripInternalFields(deterministic));
     }
   }
 
@@ -103,19 +115,44 @@ export default async function handler(req, res) {
 }
 
 // ---------------------------------------------------------------------------
-// Mode 1 helpers — real products, ingredient-list-only comparison
+// Mode 1 helpers — real products, deterministic-stats-driven comparison
 // ---------------------------------------------------------------------------
 
-async function callClaudeForRealReport(a, b, apiKey) {
-  const systemPrompt = `You are SkinScout's product-comparison assistant. Compare these two real products using ONLY their listed ingredients — never invent an ingredient, a price, a score, or any characteristic not present in the data given. If an ingredient list is short or empty, say so honestly rather than guessing. Never diagnose a skin condition or make a medical claim. Respond with ONLY a raw JSON object (no markdown fences, no preamble) matching exactly this shape: {"summary": string (2-3 factual sentences comparing the two ingredient lists — e.g. what they share or how they notably differ), "sharedIngredients": [string], "disclaimer": string (exactly: "${DISCLAIMER}")}`;
-  const userPrompt = `Product A: ${JSON.stringify({ name: a.name, brand: a.brand, ingredients: a.ingredients })}\n\nProduct B: ${JSON.stringify({ name: b.name, brand: b.brand, ingredients: b.ingredients })}`;
+// The deterministic report already carries statsA/statsB/overallA/overallB
+// internally (needed to build the Claude prompt below) — strip them before
+// the response reaches the client, since the documented response shape is
+// just {winner, verdict, strengths, weaknesses, bestFitProfile, disclaimer}.
+// The stat-by-stat table and radar on the Compare page compute their own
+// values client-side from the same engine; they don't read this response.
+function stripInternalFields({ statsA, statsB, overallA, overallB, ...report }) {
+  return report;
+}
+
+async function callClaudeForRealReport(a, b, profile, deterministic, keyIngredientsA, keyIngredientsB, bestForA, bestForB, apiKey) {
+  const { statsA, statsB, overallA, overallB } = deterministic;
+
+  const systemPrompt = `You are SkinScout's product-comparison assistant. Use ONLY the verified stats, scores and ingredients provided below — they were computed deterministically from each product's real ingredient list. You may explain and interpret them, but NEVER override, recompute, or invent a number, ingredient, price, or characteristic. A null/missing score means there wasn't enough data for that signal — say so honestly rather than guessing a value. Never diagnose a skin condition or make a medical claim. Respond with ONLY a raw JSON object (no markdown fences, no preamble) matching exactly this shape: {"winner": string (the winning product's brand+name, or "Tie", or "Insufficient data"), "verdict": string (2-3 sentences explaining the result using the given stats), "strengths": [string, string] (why the winner leads, referencing actual stat values given), "weaknesses": [string, string] (where the OTHER product leads instead), "bestFitProfile": string (1-2 sentences on who each product may best suit, using ONLY the given skin-type signals), "disclaimer": string (exactly: "${DISCLAIMER}")}`;
+
+  const userPrompt = `User profile: ${JSON.stringify(profile || {})}
+
+Product A: ${[a.brand, a.name].filter(Boolean).join(" ")}
+  Overall score: ${overallA.score ?? "insufficient data"}
+  Stats: ${JSON.stringify(statsA)}
+  Key ingredients: ${JSON.stringify(keyIngredientsA)}
+  Formulation-based skin-type signals: ${JSON.stringify(bestForA)}
+
+Product B: ${[b.brand, b.name].filter(Boolean).join(" ")}
+  Overall score: ${overallB.score ?? "insufficient data"}
+  Stats: ${JSON.stringify(statsB)}
+  Key ingredients: ${JSON.stringify(keyIngredientsB)}
+  Formulation-based skin-type signals: ${JSON.stringify(bestForB)}`;
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 600,
+      max_tokens: 700,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
     }),
@@ -125,23 +162,6 @@ async function callClaudeForRealReport(a, b, apiKey) {
   const text = (data.content || []).map((b) => b.text || "").join("\n");
   const clean = text.replace(/```json|```/g, "").trim();
   return JSON.parse(clean);
-}
-
-function buildRealMockReport(a, b) {
-  const namesA = new Set((a.ingredients || []).map((n) => n.toLowerCase()));
-  const namesB = new Set((b.ingredients || []).map((n) => n.toLowerCase()));
-  const shared = [...namesA].filter((n) => namesB.has(n));
-
-  let summary;
-  if ((a.ingredients || []).length === 0 || (b.ingredients || []).length === 0) {
-    summary = `${a.name} and ${b.name} can't be fully compared yet — at least one product is missing a structured ingredient list.`;
-  } else if (shared.length > 0) {
-    summary = `${a.brand || a.name} and ${b.brand || b.name} share ${shared.length} listed ingredient${shared.length === 1 ? "" : "s"}; the rest of each formula is different.`;
-  } else {
-    summary = `${a.name} and ${b.name} have no overlapping listed ingredients based on the data available.`;
-  }
-
-  return { summary, sharedIngredients: shared, disclaimer: DISCLAIMER };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,11 @@
 // Server-only. The ONE canonical shape for a real product, used everywhere
 // a real product is displayed or reasoned about: { id, barcode, name,
-// brand, image_url, category, ingredients }. Category comes from the same
-// normalizeProductCategory() ranking.js uses, so Discover/Compare/the
-// routine/swap can never disagree about what category a product is.
+// brand, image_url, category, ingredients, price_eur }. Category comes
+// from the same normalizeProductCategory() ranking.js uses, so Discover/
+// Compare/the routine/swap can never disagree about what category a
+// product is. price_eur lives in product_attributes, which is empty for
+// every current OBF import — it comes through as null until that's
+// populated; nothing here ever invents a price.
 //
 // Never import this from src/pages or any browser-rendered code — it reads
 // process.env and creates its own Supabase client. Frontend code that needs
@@ -25,7 +28,7 @@ export async function fetchProductsByIds(ids) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data: rows, error } = await supabase
     .from("products")
-    .select("id, obf_barcode, name, image_url, raw_categories_text, brands(name), product_ingredients(position, ingredients(canonical_name))")
+    .select("id, obf_barcode, name, image_url, raw_categories_text, brands(name), product_ingredients(position, ingredients(canonical_name)), product_attributes(price_eur)")
     .in("id", cleanIds)
     .eq("source", "open_beauty_facts");
 
@@ -42,5 +45,6 @@ export async function fetchProductsByIds(ids) {
       .sort((a, b) => a.position - b.position)
       .map((pi) => pi.ingredients?.canonical_name)
       .filter(Boolean),
+    price_eur: row.product_attributes?.price_eur ?? null,
   }));
 }

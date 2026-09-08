@@ -76,6 +76,69 @@ const EXCLUSION_KEYWORD_MAP = {
   Retinoids: ["retinol", "retinal", "retinyl", "retinoic"],
 };
 
+// Ingredients with a well-documented role in oil control / acne-prone skin
+// suitability. Presence-based signal only — not a claim that any product
+// treats acne (that's a medical claim this app never makes).
+const ACNE_SIGNALS = [
+  { keywords: ["salicylic acid"], weight: 35, label: "salicylic acid" },
+  { keywords: ["niacinamide"], weight: 25, label: "niacinamide" },
+  { keywords: ["zinc pca", "zinc oxide"], weight: 20, label: "zinc" },
+  { keywords: ["benzoyl peroxide"], weight: 35, label: "benzoyl peroxide" },
+  { keywords: ["tea tree", "melaleuca"], weight: 15, label: "tea tree" },
+  { keywords: ["sulfur", "sulphur"], weight: 15, label: "sulfur" },
+];
+
+// Ingredients with well-documented tone-evening/brightening roles.
+const BRIGHTENING_SIGNALS = [
+  { keywords: ["ascorbic acid", "vitamin c", "l-ascorbic"], weight: 30, label: "vitamin C" },
+  { keywords: ["niacinamide"], weight: 20, label: "niacinamide" },
+  { keywords: ["azelaic acid"], weight: 25, label: "azelaic acid" },
+  { keywords: ["kojic acid"], weight: 20, label: "kojic acid" },
+  { keywords: ["alpha arbutin", "arbutin"], weight: 20, label: "arbutin" },
+  { keywords: ["tranexamic acid"], weight: 20, label: "tranexamic acid" },
+  { keywords: ["licorice", "liquorice", "glycyrrhiza"], weight: 15, label: "licorice root extract" },
+];
+
+// Ingredients with well-documented anti-ageing roles (retinoids, peptides,
+// antioxidants). Presence-based signal only.
+const ANTI_AGEING_SIGNALS = [
+  { keywords: ["retinol", "retinal", "retinyl", "retinoic"], weight: 35, label: "retinoid" },
+  { keywords: ["peptide"], weight: 25, label: "peptides" },
+  { keywords: ["ascorbic acid", "vitamin c", "l-ascorbic"], weight: 15, label: "vitamin C (antioxidant)" },
+  { keywords: ["tocopherol", "vitamin e"], weight: 10, label: "vitamin E (antioxidant)" },
+  { keywords: ["ferulic acid"], weight: 15, label: "ferulic acid" },
+  { keywords: ["coenzyme q10", "ubiquinone"], weight: 10, label: "coenzyme Q10" },
+  { keywords: ["resveratrol"], weight: 10, label: "resveratrol" },
+];
+
+// Skin-type suitability signals for deriveBestSkinTypes(). "positive" and
+// "negative" keyword hits are netted against each other — a type is only
+// ever suggested when the NET evidence actually favours it (see below).
+// Deliberately conservative and always hedged ("may suit"), never a
+// medical claim.
+const SKIN_TYPE_SIGNALS = {
+  "dry skin": {
+    positive: ["shea butter", "squalane", "ceramide", "cholesterol", "fatty acid", "glycerin", "hyaluronic acid"],
+    negative: ["salicylic acid", "alcohol denat", "clay"],
+  },
+  "oily skin": {
+    positive: ["niacinamide", "salicylic acid", "zinc pca", "tea tree", "clay", "witch hazel"],
+    negative: ["shea butter", "mineral oil", "petrolatum"],
+  },
+  "combination skin": {
+    positive: ["niacinamide", "hyaluronic acid", "panthenol"],
+    negative: [],
+  },
+  "sensitive skin": {
+    positive: ["centella asiatica", "panthenol", "allantoin", "bisabolol", "madecassoside", "beta-glucan", "oat"],
+    negative: ["parfum", "fragrance", "essential oil", "alcohol denat", "glycolic acid", "salicylic acid", "retinol", "retinal"],
+  },
+  "normal skin": {
+    positive: ["glycerin", "hyaluronic acid", "niacinamide"],
+    negative: [],
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Individual scores
 // ---------------------------------------------------------------------------
@@ -194,6 +257,104 @@ export function calculateProfileMatchScore(product, profile) {
   return { score: clampScore(score), confidence: confidenceFor(names), reasons };
 }
 
+// Shared additive-keyword-match pattern used by the three concern-specific
+// scores below (same shape as calculateHydrationScore).
+function additiveSignalScore(product, signals, noDataReason) {
+  const names = ingredientNames(product);
+  if (names.length === 0) return { score: null, confidence: "none", reasons: [noDataReason] };
+  let score = 0;
+  const reasons = [];
+  for (const signal of signals) {
+    if (signal.keywords.some((kw) => names.some((n) => n.includes(kw)))) {
+      score += signal.weight;
+      reasons.push(`Contains ${signal.label}`);
+    }
+  }
+  if (reasons.length === 0) reasons.push("No common supporting ingredients detected");
+  return { score: clampScore(score), confidence: confidenceFor(names), reasons };
+}
+
+export function calculateAcneScore(product) {
+  return additiveSignalScore(product, ACNE_SIGNALS, "No ingredient data available to assess acne-prone suitability");
+}
+
+export function calculateBrighteningScore(product) {
+  return additiveSignalScore(product, BRIGHTENING_SIGNALS, "No ingredient data available to assess brightening potential");
+}
+
+export function calculateAntiAgeingScore(product) {
+  return additiveSignalScore(product, ANTI_AGEING_SIGNALS, "No ingredient data available to assess anti-ageing potential");
+}
+
+// "Value for money" needs a real price AND a meaningful basis to compare
+// it against — a single price in isolation, with no aggregate catalogue
+// statistics to weigh it against, can't be scored without inventing an
+// arbitrary threshold. Open Beauty Facts doesn't provide price at all
+// (product_attributes.price_eur is unpopulated for every current
+// product), so this deliberately always returns "no data" for now rather
+// than fabricating a false sense of precision — it's wired up so it can
+// be implemented properly once real, comparable price data exists.
+export function calculateValueForMoneyScore(product) {
+  if (typeof product?.price_eur !== "number") {
+    return { score: null, confidence: "none", reasons: ["No price data available"] };
+  }
+  return { score: null, confidence: "none", reasons: ["Price data present but no reliable comparison basis yet"] };
+}
+
+// The 7 stats shown on the Compare page's "Stat-by-stat" table and radar
+// chart — ONE shared definition so both sections can never drift apart.
+// `calculate` always takes (product, profile); profile is simply unused
+// by the scores that don't need it.
+export const COMPARISON_STATS = [
+  { key: "hydration", label: "Hydration", calculate: (p) => calculateHydrationScore(p) },
+  { key: "acne", label: "Acne-prone suitability", calculate: (p) => calculateAcneScore(p) },
+  { key: "sensitiveSkinFit", label: "Sensitive-skin suitability", calculate: (p, profile) => calculateSensitiveSkinScore(p, profile) },
+  { key: "brightening", label: "Brightening", calculate: (p) => calculateBrighteningScore(p) },
+  { key: "antiAgeing", label: "Anti-ageing", calculate: (p) => calculateAntiAgeingScore(p) },
+  { key: "formulaProfile", label: "Formula profile", calculate: (p, profile) => calculateFormulaProfileScore(p, profile) },
+  { key: "valueForMoney", label: "Value for money", calculate: (p) => calculateValueForMoneyScore(p) },
+];
+
+// Picks the most functionally-relevant REAL ingredients from the
+// product's own list — never invented, never chosen by Claude. Falls back
+// to the first few listed ingredients (still real, just not functionally
+// tagged) when none match a known signal. `limited: true` means there was
+// no ingredient data at all, for the UI's "ingredient data limited" state.
+const ALL_FUNCTIONAL_SIGNALS = [...HYDRATION_SIGNALS, ...IRRITANT_SIGNALS, ...ACNE_SIGNALS, ...BRIGHTENING_SIGNALS, ...ANTI_AGEING_SIGNALS];
+
+export function extractKeyIngredients(product, limit = 5) {
+  const raw = (product?.ingredients || []).filter(Boolean);
+  if (raw.length === 0) return { items: [], limited: true };
+
+  const picked = [];
+  for (const ingredient of raw) {
+    if (picked.length >= limit) break;
+    const lower = ingredient.toLowerCase();
+    if (ALL_FUNCTIONAL_SIGNALS.some((s) => s.keywords.some((kw) => lower.includes(kw)))) picked.push(ingredient);
+  }
+  if (picked.length === 0) return { items: raw.slice(0, Math.min(limit, raw.length)), limited: false };
+  return { items: picked, limited: false };
+}
+
+// Conservative, hedged skin-type suggestions ("May suit X skin") derived
+// from net positive-vs-negative ingredient evidence — never a medical
+// claim, and a skin type is only ever included when there's real positive
+// evidence for it (not just an absence of contrary evidence).
+export function deriveBestSkinTypes(product) {
+  const names = ingredientNames(product);
+  if (names.length === 0) return { items: [], limited: true };
+
+  const scored = Object.entries(SKIN_TYPE_SIGNALS).map(([label, sig]) => {
+    const posHits = sig.positive.filter((kw) => names.some((n) => n.includes(kw))).length;
+    const negHits = sig.negative.filter((kw) => names.some((n) => n.includes(kw))).length;
+    return { label, net: posHits - negHits, posHits };
+  });
+
+  const qualifying = scored.filter((s) => s.posHits > 0 && s.net > 0).sort((a, b) => b.net - a.net).slice(0, 3);
+  if (qualifying.length === 0) return { items: [], limited: false };
+  return { items: qualifying.map((s) => `May suit ${s.label}`), limited: false };
+}
+
 // ---------------------------------------------------------------------------
 // Overall score — one place to adjust the weights
 // ---------------------------------------------------------------------------
@@ -230,4 +391,85 @@ export function calculateOverallScore(product, profile) {
     usable.length < 2 ? "low" : usable.every((c) => c.confidence === "high") ? "high" : "medium";
 
   return { score: clampScore(weighted), confidence, reasons: usable.flatMap((c) => c.reasons), components };
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic comparison report — shared by BOTH api/generate-report.js's
+// server-side fallback (used when Claude is unconfigured or fails) and
+// src/lib/ai.js's client-side fallback (used when the request itself can't
+// reach the server) — one implementation, so the two fallbacks can never
+// drift apart. `disclaimer` is passed in rather than hardcoded here, since
+// this module is about scoring, not app-wide legal copy.
+// ---------------------------------------------------------------------------
+export function buildDeterministicComparisonReport(a, b, profile, disclaimer) {
+  const statsA = {};
+  const statsB = {};
+  for (const stat of COMPARISON_STATS) {
+    statsA[stat.key] = stat.calculate(a, profile).score;
+    statsB[stat.key] = stat.calculate(b, profile).score;
+  }
+  const overallA = calculateOverallScore(a, profile);
+  const overallB = calculateOverallScore(b, profile);
+  const bestForA = deriveBestSkinTypes(a).items;
+  const bestForB = deriveBestSkinTypes(b).items;
+
+  let winnerProduct = null;
+  let loserProduct = null;
+  let tie = false;
+  let insufficient = false;
+
+  if (overallA.score == null && overallB.score == null) {
+    insufficient = true;
+  } else if (overallA.score == null) {
+    winnerProduct = b; loserProduct = a;
+  } else if (overallB.score == null) {
+    winnerProduct = a; loserProduct = b;
+  } else if (overallA.score === overallB.score) {
+    tie = true;
+  } else if (overallA.score > overallB.score) {
+    winnerProduct = a; loserProduct = b;
+  } else {
+    winnerProduct = b; loserProduct = a;
+  }
+
+  const winnerLabel = insufficient
+    ? "Insufficient data"
+    : tie
+    ? "Tie"
+    : [winnerProduct.brand, winnerProduct.name].filter(Boolean).join(" ");
+
+  const strengths = [];
+  const weaknesses = [];
+  if (winnerProduct) {
+    const winnerStats = winnerProduct === a ? statsA : statsB;
+    const loserStats = winnerProduct === a ? statsB : statsA;
+    for (const stat of COMPARISON_STATS) {
+      const w = winnerStats[stat.key];
+      const l = loserStats[stat.key];
+      if (typeof w !== "number" || typeof l !== "number") continue;
+      if (w > l) strengths.push(`Scores higher on ${stat.label.toLowerCase()} (${w} vs ${l})`);
+      else if (l > w) weaknesses.push(`${[loserProduct.brand, loserProduct.name].filter(Boolean).join(" ")} scores higher on ${stat.label.toLowerCase()} (${l} vs ${w})`);
+    }
+  }
+
+  const bestFitParts = [];
+  if (bestForA.length) bestFitParts.push(`${a.name}: ${bestForA.join(", ")}`);
+  if (bestForB.length) bestFitParts.push(`${b.name}: ${bestForB.join(", ")}`);
+
+  return {
+    winner: winnerLabel,
+    verdict: insufficient
+      ? `There isn't enough real ingredient data to confidently compare ${a.name} and ${b.name} yet.`
+      : tie
+      ? `${a.name} and ${b.name} scored evenly overall across the available ingredient-derived signals.`
+      : `${winnerLabel} scored higher overall across the available ingredient-derived signals.`,
+    strengths: strengths.length ? strengths.slice(0, 2) : ["Not enough data to identify a clear strength"],
+    weaknesses: weaknesses.length ? weaknesses.slice(0, 2) : ["No clear gap identified from the available data"],
+    bestFitProfile: bestFitParts.length ? bestFitParts.join(" · ") : "Not enough formulation evidence to suggest a best-fit skin type for either product.",
+    disclaimer,
+    statsA,
+    statsB,
+    overallA,
+    overallB,
+  };
 }
