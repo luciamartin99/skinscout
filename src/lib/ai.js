@@ -1,4 +1,5 @@
 import { PRODUCTS, STAT_META } from "../data/products.js";
+import { isRealProductId } from "./productId.js";
 
 /* ============================== AI LAYER ==============================
    The browser NEVER talks to the AI provider directly. It calls our own
@@ -31,17 +32,38 @@ export function localMockReport(a, b, profile) {
   };
 }
 
+// Client-side fallback for REAL products (no .stats to score against) —
+// used only if the /api/generate-report request itself fails to reach the
+// server (network error). Purely ingredient-overlap based, same as the
+// server's own buildRealMockReport, and never invents a value.
+function localRealMockReport(a, b) {
+  const namesA = new Set((a.ingredients || []).map((n) => n.toLowerCase()));
+  const namesB = new Set((b.ingredients || []).map((n) => n.toLowerCase()));
+  const shared = [...namesA].filter((n) => namesB.has(n));
+  return {
+    summary: shared.length > 0
+      ? `${a.brand || a.name} and ${b.brand || b.name} share ${shared.length} listed ingredient${shared.length === 1 ? "" : "s"}; the rest of each formula is different.`
+      : `${a.name} and ${b.name} have no overlapping listed ingredients based on the data available.`,
+    sharedIngredients: shared,
+    disclaimer: "SkinScout provides general product-comparison information and does not replace professional medical advice. Individual reactions may vary. Patch-test new products and consult a qualified professional for persistent skin concerns.",
+  };
+}
+
 export async function generateScoutingReport(a, b, profile) {
+  const real = isRealProductId(a.id) && isRealProductId(b.id);
+  const body = real
+    ? { productAId: a.id, productBId: b.id }
+    : { productA: a, productB: b, profile };
   try {
     const response = await fetch("/api/generate-report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productA: a, productB: b, profile }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error("Request failed");
     return await response.json();
   } catch (e) {
-    return localMockReport(a, b, profile);
+    return real ? localRealMockReport(a, b) : localMockReport(a, b, profile);
   }
 }
 

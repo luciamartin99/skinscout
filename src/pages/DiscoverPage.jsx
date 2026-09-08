@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Sparkles } from "lucide-react";
 import FilterSelect from "../components/FilterSelect.jsx";
 import { loadRoutine } from "../lib/routineStorage.js";
 
@@ -36,29 +36,49 @@ function ProductImage({ src, name, size = 64 }) {
   );
 }
 
+function CompareButton({ active, disabled, onClick }) {
+  return (
+    <button
+      className="ss-btn"
+      style={{ flex: 1, fontSize: 13.5, padding: "10px 14px", background: active ? "var(--burgundy)" : "var(--beige)", color: active ? "#fff" : "var(--ink)", opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {active ? "Remove" : "Add to Compare"}
+    </button>
+  );
+}
+
 // Compact card for the "From your routine" strip — smaller than the main
 // catalog card so this section stays a secondary, glanceable summary
-// rather than competing with "All products" below it.
-function RoutineProductCard({ product }) {
+// rather than competing with "All products" below it. Still supports
+// Add/Remove Compare, using the exact same real product id.
+function RoutineProductCard({ product, compareActive, onCompare, compareFull }) {
   return (
-    <div className="ss-card" style={{ padding: 12, display: "flex", gap: 10, alignItems: "center" }}>
-      <ProductImage src={product.image_url} name={product.name} size={44} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sage)" }}>{product.brand}</div>
-        <div className="ss-serif" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{product.name}</div>
+    <div className="ss-card" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <ProductImage src={product.image_url} name={product.name} size={44} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sage)" }}>{product.brand}</div>
+          <div className="ss-serif" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{product.name}</div>
+        </div>
       </div>
+      <CompareButton active={compareActive} disabled={!compareActive && compareFull} onClick={() => onCompare(product.id)} />
     </div>
   );
 }
 
-// Same footprint as the original ProductCard (64px image, same padding/gap/
-// typography), with fictional-data rows (score, tags, stat bars, view/
-// compare buttons — none of which apply to real products yet) simply
-// omitted rather than faked. Category + ingredient count are real data.
-function RealProductCard({ product }) {
+// Same footprint as the original ProductCard (64px image, padding 16, gap
+// 12, same typography), with fictional-data rows (score, tags, stat bars)
+// omitted rather than faked — replaced by real category/ingredient-count
+// chips and a real "Add to Compare" action in the same footer position.
+function RealProductCard({ product, compareActive, onCompare, compareFull }) {
   const subtitleParts = [product.category, product.barcode].filter(Boolean);
   return (
-    <div className="ss-card ss-fade" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      className="ss-card ss-fade"
+      style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, border: compareActive ? "1.5px solid var(--burgundy)" : "1px solid var(--line)" }}
+    >
       <div style={{ display: "flex", gap: 12 }}>
         <div style={{ width: 64, height: 64, flexShrink: 0 }}>
           <ProductImage src={product.image_url} name={product.name} size={64} />
@@ -76,11 +96,14 @@ function RealProductCard({ product }) {
           <span className="ss-chip">{product.ingredientCount} ingredients listed</span>
         </div>
       )}
+      <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+        <CompareButton active={compareActive} disabled={!compareActive && compareFull} onClick={() => onCompare(product.id)} />
+      </div>
     </div>
   );
 }
 
-export default function DiscoverPage() {
+export default function DiscoverPage({ onCompare, compareIds, setView }) {
   const routineProducts = useMemo(getRoutineProducts, []);
 
   const [searchInput, setSearchInput] = useState("");
@@ -92,6 +115,8 @@ export default function DiscoverPage() {
 
   const [status, setStatus] = useState("loading"); // loading | done | error
   const [result, setResult] = useState({ products: [], total: 0, totalPages: 1 });
+
+  const compareFull = compareIds.length >= 2;
 
   // Debounce the search box so we don't fire a request per keystroke.
   useEffect(() => {
@@ -143,8 +168,19 @@ export default function DiscoverPage() {
         <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: "1px solid var(--line)" }}>
           <h2 className="ss-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: 10 }}>From your routine</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-            {routineProducts.map((p) => <RoutineProductCard key={p.id} product={p} />)}
+            {routineProducts.map((p) => (
+              <RoutineProductCard key={p.id} product={p} compareActive={compareIds.includes(p.id)} onCompare={onCompare} compareFull={compareFull} />
+            ))}
           </div>
+        </div>
+      )}
+
+      {compareIds.length === 2 && (
+        <div className="ss-card ss-fade" style={{ padding: "14px 18px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: "var(--sage-lt)" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--forest-dk)" }}>2 products selected for comparison</span>
+          <button className="ss-btn ss-btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px" }} onClick={() => setView("compare")}>
+            <Sparkles size={14} /> Compare products
+          </button>
         </div>
       )}
 
@@ -169,7 +205,7 @@ export default function DiscoverPage() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
         <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>
-          {status === "done" ? `${result.total} product${result.total === 1 ? "" : "s"}` : " "}
+          {status === "done" ? `${result.total} product${result.total === 1 ? "" : "s"}` : " "}
         </span>
         <FilterSelect label="Sort" value={sort} setValue={setSort} options={SORT_OPTIONS} inline />
       </div>
@@ -180,7 +216,9 @@ export default function DiscoverPage() {
       {status === "done" && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
-            {result.products.map((p) => <RealProductCard key={p.id} product={p} />)}
+            {result.products.map((p) => (
+              <RealProductCard key={p.id} product={p} compareActive={compareIds.includes(p.id)} onCompare={onCompare} compareFull={compareFull} />
+            ))}
             {result.products.length === 0 && (
               <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 60, color: "var(--ink-soft)" }}>
                 No products found.

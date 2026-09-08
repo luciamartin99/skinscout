@@ -14,6 +14,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { normalizeProductCategory, ROUTINE_CATEGORIES } from "../src/lib/ranking.js";
+import { fetchProductsByIds } from "../src/lib/canonicalProducts.js";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -29,6 +30,20 @@ export default async function handler(req, res) {
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error("api/products: Supabase is not configured (missing SUPABASE_URL/SUPABASE_ANON_KEY).");
     return res.status(503).json({ error: "Products couldn't be loaded right now." });
+  }
+
+  // ?ids=uuid1,uuid2 — full canonical detail (incl. ingredients) for a
+  // small set of specific products, e.g. the 1-2 currently selected for
+  // Compare. Skips pagination/search/category entirely; not the listing path.
+  if (req.query.ids) {
+    const ids = String(req.query.ids).split(",").map((s) => s.trim()).filter(Boolean);
+    try {
+      const products = await fetchProductsByIds(ids);
+      return res.status(200).json({ products });
+    } catch (err) {
+      console.error("api/products (ids lookup): failed:", err.message);
+      return res.status(503).json({ error: "Products couldn't be loaded right now." });
+    }
   }
 
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
