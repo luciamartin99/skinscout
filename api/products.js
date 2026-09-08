@@ -40,7 +40,7 @@ export default async function handler(req, res) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data: rows, error } = await supabase
     .from("products")
-    .select("id, obf_barcode, name, image_url, raw_categories_text, brands(name), product_ingredients(id)")
+    .select("id, obf_barcode, name, image_url, raw_categories_text, brands(name), product_ingredients(position)")
     .eq("source", "open_beauty_facts")
     .limit(MAX_FETCH);
 
@@ -48,6 +48,8 @@ export default async function handler(req, res) {
     console.error("api/products: Supabase query failed:", error.message);
     return res.status(503).json({ error: "Products couldn't be loaded right now." });
   }
+
+  console.log(`api/products: fetched ${rows?.length || 0} row(s) from Supabase; filters: page=${page} pageSize=${pageSize} search="${search}" category="${category}" sort=${sortBy}`);
 
   let items = (rows || []).map((row) => ({
     id: row.id,
@@ -72,6 +74,8 @@ export default async function handler(req, res) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
   const pageItems = items.slice(start, start + pageSize);
+
+  console.log(`api/products: ${total} match(es) after filtering, returning ${pageItems.length} for page ${page}/${totalPages}`);
 
   return res.status(200).json({ products: pageItems, total, page, pageSize, totalPages });
 }

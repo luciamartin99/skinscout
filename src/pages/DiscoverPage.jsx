@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import FilterSelect from "../components/FilterSelect.jsx";
 import { loadRoutine } from "../lib/routineStorage.js";
 
@@ -22,9 +22,11 @@ function getRoutineProducts() {
   return [...seen.values()];
 }
 
-function ProductImage({ src, name, size = 52 }) {
+// Same neutral placeholder treatment already used on the routine page when
+// no image_url is available — never invent an image.
+function ProductImage({ src, name, size = 64 }) {
   return (
-    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: 10, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ width: size, height: size, borderRadius: 16, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       {src ? (
         <img src={src} alt={name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
       ) : (
@@ -34,38 +36,46 @@ function ProductImage({ src, name, size = 52 }) {
   );
 }
 
+// Compact card for the "From your routine" strip — smaller than the main
+// catalog card so this section stays a secondary, glanceable summary
+// rather than competing with "All products" below it.
 function RoutineProductCard({ product }) {
   return (
-    <div className="ss-card" style={{ padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
-      <ProductImage src={product.image_url} name={product.name} />
+    <div className="ss-card" style={{ padding: 12, display: "flex", gap: 10, alignItems: "center" }}>
+      <ProductImage src={product.image_url} name={product.name} size={44} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sage)" }}>{product.brand}</div>
-        <div className="ss-serif" style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{product.name}</div>
+        <div className="ss-serif" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{product.name}</div>
       </div>
     </div>
   );
 }
 
-// Real catalog card — deliberately shows only what's real: image, brand,
-// name, canonical category, barcode, and whether an ingredient list is on
-// file. No 0-100 score, no tags, no price — this app has no real price
-// data yet, and inventing one would be exactly the kind of fictional data
-// this rework is removing.
+// Same footprint as the original ProductCard (64px image, same padding/gap/
+// typography), with fictional-data rows (score, tags, stat bars, view/
+// compare buttons — none of which apply to real products yet) simply
+// omitted rather than faked. Category + ingredient count are real data.
 function RealProductCard({ product }) {
+  const subtitleParts = [product.category, product.barcode].filter(Boolean);
   return (
-    <div className="ss-card ss-fade" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="ss-card ss-fade" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", gap: 12 }}>
-        <ProductImage src={product.image_url} name={product.name} size={56} />
+        <div style={{ width: 64, height: 64, flexShrink: 0 }}>
+          <ProductImage src={product.image_url} name={product.name} size={64} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--sage)", letterSpacing: 0.2 }}>{product.brand || "Unknown brand"}</div>
-          <div className="ss-serif" style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{product.name}</div>
+          <div className="ss-serif" style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.2 }}>{product.name}</div>
+          {subtitleParts.length > 0 && (
+            <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 2 }}>{subtitleParts.join(" · ")}</div>
+          )}
         </div>
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {product.category && <span className="ss-chip">{product.category}</span>}
-        {product.ingredientCount > 0 && <span className="ss-chip">{product.ingredientCount} ingredients listed</span>}
-      </div>
-      {product.barcode && <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>Barcode: {product.barcode}</div>}
+      {product.ingredientCount > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <span className="ss-chip">{product.ingredientCount} ingredients listed</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -78,6 +88,7 @@ export default function DiscoverPage() {
   const [category, setCategory] = useState("All");
   const [sort, setSort] = useState("A–Z");
   const [page, setPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [status, setStatus] = useState("loading"); // loading | done | error
   const [result, setResult] = useState({ products: [], total: 0, totalPages: 1 });
@@ -129,15 +140,13 @@ export default function DiscoverPage() {
       <p style={{ color: "var(--ink-soft)", marginBottom: 24 }}>Browse the real SkinScout catalog and filter by category.</p>
 
       {routineProducts.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <h2 className="ss-serif" style={{ fontSize: 19, fontWeight: 600, marginBottom: 12 }}>From your routine</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: "1px solid var(--line)" }}>
+          <h2 className="ss-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: 10 }}>From your routine</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
             {routineProducts.map((p) => <RoutineProductCard key={p.id} product={p} />)}
           </div>
         </div>
       )}
-
-      <h2 className="ss-serif" style={{ fontSize: 19, fontWeight: 600, marginBottom: 12 }}>All products</h2>
 
       <div style={{ position: "relative", marginBottom: 16, maxWidth: 480 }}>
         <Search size={17} style={{ position: "absolute", left: 16, top: 14, color: "var(--ink-soft)" }} />
@@ -148,9 +157,21 @@ export default function DiscoverPage() {
         />
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
-        <FilterSelect label="Category" value={category} setValue={setCategory} options={CATEGORY_OPTIONS} />
-        <FilterSelect label="Sort" value={sort} setValue={setSort} options={SORT_OPTIONS} />
+      <button className="ss-btn ss-btn-outline" style={{ marginBottom: 16, display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px" }} onClick={() => setShowFilters(!showFilters)}>
+        <Filter size={15} /> Filters {showFilters ? "▴" : "▾"}
+      </button>
+
+      {showFilters && (
+        <div className="ss-card ss-fade" style={{ padding: 20, marginBottom: 24, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 16 }}>
+          <FilterSelect label="Category" value={category} setValue={setCategory} options={CATEGORY_OPTIONS} />
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+        <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>
+          {status === "done" ? `${result.total} product${result.total === 1 ? "" : "s"}` : " "}
+        </span>
+        <FilterSelect label="Sort" value={sort} setValue={setSort} options={SORT_OPTIONS} inline />
       </div>
 
       {status === "loading" && <p style={{ color: "var(--ink-soft)" }}>Loading products…</p>}
@@ -158,24 +179,23 @@ export default function DiscoverPage() {
 
       {status === "done" && (
         <>
-          <div style={{ fontSize: 13.5, color: "var(--ink-soft)", marginBottom: 14 }}>{result.total} product{result.total === 1 ? "" : "s"}</div>
-
-          {result.products.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 60, color: "var(--ink-soft)" }}>No products found.</div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18, marginBottom: 24 }}>
-              {result.products.map((p) => <RealProductCard key={p.id} product={p} />)}
-            </div>
-          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
+            {result.products.map((p) => <RealProductCard key={p.id} product={p} />)}
+            {result.products.length === 0 && (
+              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 60, color: "var(--ink-soft)" }}>
+                No products found.
+              </div>
+            )}
+          </div>
 
           {result.totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14 }}>
-              <button className="ss-btn ss-btn-outline" style={{ padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 4 }} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                <ChevronLeft size={15} /> Prev
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 24 }}>
+              <button className="ss-btn ss-btn-outline" style={{ padding: "8px 14px" }} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                Prev
               </button>
               <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>Page {result.page} of {result.totalPages}</span>
-              <button className="ss-btn ss-btn-outline" style={{ padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 4 }} disabled={page >= result.totalPages} onClick={() => setPage((p) => p + 1)}>
-                Next <ChevronRight size={15} />
+              <button className="ss-btn ss-btn-outline" style={{ padding: "8px 14px" }} disabled={page >= result.totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next
               </button>
             </div>
           )}
