@@ -1,6 +1,6 @@
 export default function ScorePill({ score, size = "md" }) {
   const big = size === "lg";
-  const color = score >= 85 ? "#1E3A2E" : score >= 70 ? "#6E2A3B" : "#8C7A4E";
+  const color = score >= 85 ? "#5A1F35" : score >= 70 ? "#8C3A54" : "#A85A70";
   return (
     <div
       className="ss-tab"

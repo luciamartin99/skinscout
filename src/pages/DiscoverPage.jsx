@@ -89,7 +89,7 @@ function RealProductCard({ product, profile, compareActive, onCompare, compareFu
         flexDirection: "column",
         gap: 14,
         border: compareActive ? "1.5px solid var(--burgundy)" : "1px solid var(--line)",
-        background: compareActive ? "rgba(118,42,66,0.04)" : "var(--card)",
+        background: compareActive ? "rgba(243,221,228,0.45)" : "var(--card)",
       }}
     >
       <div style={{ display: "flex", gap: 14 }}>

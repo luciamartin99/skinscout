@@ -106,7 +106,7 @@ function RoutineSection({ title, subtitle, icon, sectionKey, steps, routine, onS
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}>
         {icon}
         <div>
-          <h2 className="ss-serif" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}>{title}</h2>
+          <h2 className="ss-serif" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2, color: "var(--burgundy)" }}>{title}</h2>
           <span className="ss-eyebrow">{subtitle}</span>
         </div>
       </div>
@@ -165,8 +165,8 @@ export default function RoutinePage({ setView }) {
           (see recomputeWarnings above and api/generate-routine.js), it's
           just never surfaced in this UI. A generated routine is shown as-is. */}
 
-      <RoutineSection title="Morning" subtitle="AM routine" icon={<Sun size={18} color="var(--forest)" />} sectionKey="morning" steps={routine.morning || []} routine={routine} onSwap={handleSwap} />
-      <RoutineSection title="Evening" subtitle="PM routine" icon={<Moon size={18} color="var(--forest)" />} sectionKey="evening" steps={routine.evening || []} routine={routine} onSwap={handleSwap} />
+      <RoutineSection title="Morning" subtitle="AM routine" icon={<Sun size={18} color="var(--burgundy)" />} sectionKey="morning" steps={routine.morning || []} routine={routine} onSwap={handleSwap} />
+      <RoutineSection title="Evening" subtitle="PM routine" icon={<Moon size={18} color="var(--burgundy)" />} sectionKey="evening" steps={routine.evening || []} routine={routine} onSwap={handleSwap} />
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
         <button className="ss-btn ss-btn-outline" onClick={() => setView("myskin")}>Back to My Skin</button>

@@ -42,28 +42,28 @@ export default function HomePage({ setView }) {
         </div>
       </section>
 
-      <section style={{ background: "var(--forest)", padding: "72px 24px 56px" }}>
+      <section style={{ background: "var(--bg)", padding: "72px 24px 56px", borderTop: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1180, margin: "0 auto" }}>
-          <h2 className="ss-serif" style={{ color: "#FBF8F1", fontSize: "clamp(24px,3vw,30px)", fontWeight: 600, textAlign: "center", marginBottom: 48 }}>How it works</h2>
+          <h2 className="ss-serif" style={{ color: "var(--ink)", fontSize: "clamp(24px,3vw,30px)", fontWeight: 600, textAlign: "center", marginBottom: 48 }}>How it works</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 28 }}>
             {HOW_IT_WORKS.map((s) => {
               const Icon = s.icon;
               return (
-                <div key={s.n} style={{ background: "rgba(251,248,241,0.05)", border: "1px solid rgba(251,248,241,0.12)", borderRadius: 16, padding: 30 }}>
+                <div key={s.n} style={{ background: "var(--sage-lt)", border: "1px solid var(--line)", borderRadius: 16, padding: 30 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                    <div className="ss-serif" style={{ color: "var(--blush)", fontSize: 22, fontWeight: 600 }}>{s.n}</div>
-                    <Icon size={18} color="var(--blush)" strokeWidth={1.6} />
+                    <div className="ss-serif" style={{ color: "var(--burgundy)", fontSize: 22, fontWeight: 600 }}>{s.n}</div>
+                    <Icon size={18} color="var(--burgundy)" strokeWidth={1.6} />
                   </div>
-                  <div style={{ color: "#FBF8F1", fontWeight: 700, fontSize: 16.5, marginBottom: 8 }}>{s.t}</div>
-                  <div style={{ color: "rgba(251,248,241,0.68)", fontSize: 14, lineHeight: 1.6 }}>{s.d}</div>
+                  <div style={{ color: "var(--ink)", fontWeight: 700, fontSize: 16.5, marginBottom: 8 }}>{s.t}</div>
+                  <div style={{ color: "var(--ink-soft)", fontSize: 14, lineHeight: 1.6 }}>{s.d}</div>
                 </div>
               );
             })}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px 32px", flexWrap: "wrap", marginTop: 48, paddingTop: 32, borderTop: "1px solid rgba(251,248,241,0.12)" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "12px 32px", flexWrap: "wrap", marginTop: 48, paddingTop: 32, borderTop: "1px solid var(--line)" }}>
             {PROOF_POINTS.map((t) => (
-              <span key={t} style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "rgba(251,248,241,0.65)" }}>{t}</span>
+              <span key={t} style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--ink-soft)" }}>{t}</span>
             ))}
           </div>
         </div>

@@ -2,11 +2,11 @@
 export const FONTS_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;500;600;700;800&display=swap');
 :root{
-  --bg:#F7F4ED; --card:#FFFDF9; --forest:#173D32; --forest-dk:#0F2A22;
-  --burgundy:#762A42; --sage:#8FA085; --sage-lt:#DDE7DA; --blush:#D8BFA8;
-  --beige:#EDE3D3; --ink:#25302B; --ink-soft:#5C665F; --line:#E3DACB;
-  --shadow-card:0 2px 20px rgba(23,61,50,0.07);
-  --shadow-card-hover:0 14px 32px rgba(23,61,50,0.13);
+  --bg:#FDF6F7; --card:#FFFDFD; --forest:#C96A84; --forest-dk:#5A1F35;
+  --burgundy:#5A1F35; --sage:#C96A84; --sage-lt:#F3DDE4; --blush:#E8B9C7;
+  --beige:#F6EBEE; --ink:#2B2025; --ink-soft:#75656D; --line:#E9D7DB;
+  --shadow-card:0 2px 20px rgba(90,31,53,0.06);
+  --shadow-card-hover:0 14px 32px rgba(90,31,53,0.14);
 }
 *{box-sizing:border-box;}
 .ss-root{font-family:'Inter',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh;}
@@ -17,7 +17,7 @@ export const FONTS_CSS = `
 /* Interactive card variant — product cards, quiz option cards, anything
    clickable that should feel tactile without being flashy. */
 .ss-card-interactive{transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; cursor:pointer;}
-.ss-card-interactive:hover{transform:translateY(-2px); box-shadow:var(--shadow-card-hover); border-color:var(--sage);}
+.ss-card-interactive:hover{transform:translateY(-2px); box-shadow:var(--shadow-card-hover); border-color:var(--blush);}
 
 /* Small uppercase, letter-spaced label — the recurring "eyebrow" metadata
    style (brand names, section labels, step numbers). */
@@ -28,12 +28,12 @@ export const FONTS_CSS = `
 .ss-btn:active{transform:translateY(0px);}
 .ss-btn:disabled{cursor:not-allowed;}
 .ss-btn:focus-visible{outline:2px solid var(--forest); outline-offset:2px;}
-.ss-btn-primary{background:var(--forest); color:#FBF8F1;}
-.ss-btn-primary:hover{box-shadow:0 8px 20px rgba(23,61,50,0.3);}
+.ss-btn-primary{background:var(--forest); color:#FFFDFD;}
+.ss-btn-primary:hover{box-shadow:0 8px 20px rgba(201,106,132,0.35);}
 .ss-btn-outline{background:transparent; color:var(--forest); border:1.5px solid var(--forest);}
 .ss-btn-outline:hover{background:var(--sage-lt);}
-.ss-btn-burgundy{background:var(--burgundy); color:#FBF3EE;}
-.ss-btn-burgundy:hover{box-shadow:0 8px 20px rgba(118,42,66,0.32);}
+.ss-btn-burgundy{background:var(--burgundy); color:#FFFDFD;}
+.ss-btn-burgundy:hover{box-shadow:0 8px 20px rgba(90,31,53,0.32);}
 .ss-chip{border-radius:8px; padding:7px 14px; font-size:12.5px; font-weight:600; border:1px solid var(--line); background:var(--sage-lt); color:var(--forest-dk); transition:background .18s ease, color .18s ease, border-color .18s ease;}
 .ss-input{border:1.5px solid var(--line); border-radius:10px; padding:11px 14px; font-size:14.5px; background:#fff; width:100%; font-family:'Inter',sans-serif; transition:border-color .18s ease;}
 .ss-input:focus{outline:none; border-color:var(--sage);}
@@ -64,5 +64,5 @@ export const FONTS_CSS = `
 /* Quiz option cards */
 .ss-option{border-radius:12px; padding:16px 18px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-weight:600; font-size:14.5px; color:var(--ink); transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;}
 .ss-option:hover{border-color:var(--sage); transform:translateY(-1px);}
-.ss-option.selected{background:var(--forest); color:#FBF8F1; border-color:var(--forest);}
+.ss-option.selected{background:var(--burgundy); color:#FFFDFD; border-color:var(--burgundy);}
 `;

@@ -11,11 +11,11 @@ export default function NavBar({ view, setView, compareCount }) {
     { key: "about", label: "About Us" },
   ];
   return (
-    <div style={{ borderBottom: "1px solid var(--line)", background: "rgba(247,244,237,0.92)", position: "sticky", top: 0, zIndex: 30, backdropFilter: "blur(8px)" }}>
+    <div style={{ borderBottom: "1px solid var(--line)", background: "rgba(253,246,247,0.92)", position: "sticky", top: 0, zIndex: 30, backdropFilter: "blur(8px)" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => setView("home")}>
           <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Award size={18} color="#FBF8F1" />
+            <Award size={18} color="#FFFDFD" />
           </div>
           <span className="ss-serif" style={{ fontSize: 21, fontWeight: 600 }}>SkinScout</span>
         </div>
@@ -26,7 +26,7 @@ export default function NavBar({ view, setView, compareCount }) {
           {compareCount > 0 && (
             <span
               className="ss-chip"
-              style={{ background: "rgba(118,42,66,0.08)", color: "var(--burgundy)", borderColor: "rgba(118,42,66,0.28)" }}
+              style={{ background: "rgba(90,31,53,0.08)", color: "var(--burgundy)", borderColor: "rgba(90,31,53,0.28)" }}
               onClick={() => setView("compare")}
             >
               Comparison {compareCount}/2
@@ -47,7 +47,7 @@ export default function NavBar({ view, setView, compareCount }) {
           {compareCount > 0 && (
             <span
               className="ss-chip"
-              style={{ alignSelf: "flex-start", background: "rgba(118,42,66,0.08)", color: "var(--burgundy)", borderColor: "rgba(118,42,66,0.28)" }}
+              style={{ alignSelf: "flex-start", background: "rgba(90,31,53,0.08)", color: "var(--burgundy)", borderColor: "rgba(90,31,53,0.28)" }}
               onClick={() => { setView("compare"); setOpen(false); }}
             >
               Comparison {compareCount}/2

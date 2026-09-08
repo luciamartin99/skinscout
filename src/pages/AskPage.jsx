@@ -47,7 +47,7 @@ export default function AskPage({ skinProfile }) {
               <div style={{
                 maxWidth: "80%", padding: "11px 15px", borderRadius: 14, fontSize: 14, lineHeight: 1.55,
                 background: m.role === "user" ? "var(--forest)" : "var(--sage-lt)",
-                color: m.role === "user" ? "#F6F2EA" : "var(--ink)",
+                color: m.role === "user" ? "#FFFDFD" : "var(--ink)",
               }}>
                 {m.text}
               </div>
