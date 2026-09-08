@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, Sun, Moon, RefreshCw } from "lucide-react";
+import { Sun, Moon, RefreshCw } from "lucide-react";
 import { loadRoutine, saveRoutine } from "../lib/routineStorage.js";
 import { checkRoutineCompatibility } from "../lib/compatibility.js";
 
@@ -150,21 +150,16 @@ export default function RoutinePage({ setView }) {
       <h1 className="ss-serif" style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Your SkinScout routine</h1>
       <p style={{ color: "var(--ink-soft)", marginBottom: 24 }}>{routine.profileSummary}</p>
 
-      {routine.warnings?.length > 0 && (
-        <div className="ss-card" style={{ padding: 16, marginBottom: 24, display: "flex", gap: 10, alignItems: "flex-start", background: "var(--sage-lt)" }}>
-          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2, color: "var(--burgundy)" }} />
-          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6 }}>
-            {routine.warnings.map((w, i) => <li key={i}>{w}</li>)}
-          </ul>
-        </div>
-      )}
+      {/* No warning/diagnostic panel here by design — validation still runs
+          (see recomputeWarnings above and api/generate-routine.js), it's
+          just never surfaced in this UI. A generated routine is shown as-is. */}
 
       <RoutineSection title="Morning" icon={<Sun size={18} color="var(--forest)" />} sectionKey="morning" steps={routine.morning || []} routine={routine} onSwap={handleSwap} />
       <RoutineSection title="Evening" icon={<Moon size={18} color="var(--forest)" />} sectionKey="evening" steps={routine.evening || []} routine={routine} onSwap={handleSwap} />
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <button className="ss-btn ss-btn-outline" onClick={() => setView("quiz-summary")}>Back to my profile</button>
-        <button className="ss-btn ss-btn-outline" onClick={() => setView("discover")}>Browse products</button>
+        <button className="ss-btn ss-btn-outline" onClick={() => setView("myskin")}>Back to My Skin</button>
+        <button className="ss-btn ss-btn-outline" onClick={() => setView("discover")}>Browse Products</button>
       </div>
 
       <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 24, fontStyle: "italic" }}>
