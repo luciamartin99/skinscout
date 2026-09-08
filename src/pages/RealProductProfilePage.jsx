@@ -35,11 +35,17 @@ export default function RealProductProfilePage({ productId, setView, onCompare, 
       .catch(() => setStatus("error"));
   }, [productId]);
 
-  if (status === "loading") return null;
+  if (status === "loading") {
+    return (
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "56px 24px 80px", textAlign: "center", color: "var(--ink-soft)" }}>
+        Loading product…
+      </div>
+    );
+  }
 
   if (status === "error" || !product) {
     return (
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "48px 24px 72px", textAlign: "center" }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "56px 24px 80px", textAlign: "center" }}>
         <p style={{ color: "var(--ink-soft)", marginBottom: 20 }}>This product couldn't be loaded right now.</p>
         <button className="ss-btn ss-btn-primary" onClick={() => setView("discover")}>Back to Discover</button>
       </div>
@@ -51,13 +57,13 @@ export default function RealProductProfilePage({ productId, setView, onCompare, 
   const compareActive = compareIds?.includes(product.id);
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "32px 24px 72px" }}>
-      <button className="ss-btn ss-btn-outline" style={{ marginBottom: 20, display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 13 }} onClick={() => setView("discover")}>
+    <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 24px 80px" }}>
+      <button className="ss-btn ss-btn-outline" style={{ marginBottom: 24, display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 13 }} onClick={() => setView("discover")}>
         <ArrowLeft size={15} /> Back to Discover
       </button>
 
-      <div className="ss-card" style={{ padding: 28, display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 24 }}>
-        <div style={{ width: 120, height: 120, flexShrink: 0, borderRadius: 16, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="ss-card ss-fade" style={{ padding: 28, display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 28 }}>
+        <div className="ss-img-frame" style={{ width: 120, height: 120, flexShrink: 0, borderRadius: 16, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {product.image_url ? (
             <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           ) : (

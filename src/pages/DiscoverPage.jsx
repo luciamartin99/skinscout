@@ -28,9 +28,9 @@ function getRoutineProducts() {
 
 // Same neutral placeholder treatment already used on the routine page when
 // no image_url is available — never invent an image.
-function ProductImage({ src, name, size = 64 }) {
+function ProductImage({ src, name, size = 64, frame = false }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: 16, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className={frame ? "ss-img-frame" : ""} style={{ width: size, height: size, borderRadius: 16, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       {src ? (
         <img src={src} alt={name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
       ) : (
@@ -82,12 +82,19 @@ function RealProductCard({ product, profile, compareActive, onCompare, compareFu
 
   return (
     <div
-      className="ss-card ss-fade"
-      style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, border: compareActive ? "1.5px solid var(--burgundy)" : "1px solid var(--line)" }}
+      className="ss-card ss-card-interactive ss-fade"
+      style={{
+        padding: 18,
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+        border: compareActive ? "1.5px solid var(--burgundy)" : "1px solid var(--line)",
+        background: compareActive ? "rgba(118,42,66,0.04)" : "var(--card)",
+      }}
     >
-      <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ width: 64, height: 64, flexShrink: 0 }}>
-          <ProductImage src={product.image_url} name={product.name} size={64} />
+      <div style={{ display: "flex", gap: 14 }}>
+        <div style={{ width: 68, height: 68, flexShrink: 0 }}>
+          <ProductImage src={product.image_url} name={product.name} size={68} frame />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--sage)", letterSpacing: 0.2 }}>{product.brand || "Unknown brand"}</div>
@@ -171,14 +178,15 @@ export default function DiscoverPage({ onCompare, compareIds, setView, onView })
   }, [search, category, sort, page]);
 
   return (
-    <div style={{ maxWidth: 1180, margin: "0 auto", padding: "40px 24px 72px" }}>
-      <h1 className="ss-serif" style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Discover products</h1>
-      <p style={{ color: "var(--ink-soft)", marginBottom: 24 }}>Browse the real SkinScout catalog and filter by category.</p>
+    <div style={{ maxWidth: 1180, margin: "0 auto", padding: "48px 24px 80px" }}>
+      <span className="ss-eyebrow">Discover</span>
+      <h1 className="ss-serif" style={{ fontSize: "clamp(28px,4vw,32px)", fontWeight: 600, margin: "10px 0 8px" }}>Discover products</h1>
+      <p style={{ color: "var(--ink-soft)", marginBottom: 32 }}>Explore skincare products matched to the SkinScout approach.</p>
 
       {routineProducts.length > 0 && (
-        <div style={{ marginBottom: 28, paddingBottom: 24, borderBottom: "1px solid var(--line)" }}>
-          <h2 className="ss-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: 10 }}>From your routine</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+        <div style={{ marginBottom: 32, paddingBottom: 28, borderBottom: "1px solid var(--line)" }}>
+          <span className="ss-eyebrow" style={{ marginBottom: 10, display: "block" }}>From your routine</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
             {routineProducts.map((p) => (
               <RoutineProductCard key={p.id} product={p} compareActive={compareIds.includes(p.id)} onCompare={onCompare} compareFull={compareFull} />
             ))}
@@ -221,12 +229,36 @@ export default function DiscoverPage({ onCompare, compareIds, setView, onView })
         <FilterSelect label="Sort" value={sort} setValue={setSort} options={SORT_OPTIONS} inline />
       </div>
 
-      {status === "loading" && <p style={{ color: "var(--ink-soft)" }}>Loading products…</p>}
-      {status === "error" && <p style={{ color: "var(--burgundy)" }}>Products couldn't be loaded right now.</p>}
+      {status === "loading" && (
+        <>
+          <p style={{ textAlign: "center", color: "var(--ink-soft)", marginBottom: 20 }}>Finding your best matches…</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="ss-card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "flex", gap: 14 }}>
+                  <div className="ss-skeleton" style={{ width: 68, height: 68, flexShrink: 0 }} />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
+                    <div className="ss-skeleton" style={{ height: 10, width: "40%" }} />
+                    <div className="ss-skeleton" style={{ height: 14, width: "80%" }} />
+                  </div>
+                </div>
+                <div className="ss-skeleton" style={{ height: 7, width: "100%" }} />
+                <div className="ss-skeleton" style={{ height: 7, width: "100%" }} />
+                <div className="ss-skeleton" style={{ height: 7, width: "100%" }} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {status === "error" && (
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--ink-soft)" }}>
+          We couldn't load products right now — please try again shortly.
+        </div>
+      )}
 
       {status === "done" && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
             {result.products.map((p) => (
               <RealProductCard
                 key={p.id}

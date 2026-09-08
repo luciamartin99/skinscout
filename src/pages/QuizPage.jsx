@@ -51,30 +51,32 @@ export default function QuizPage({ setView, skinProfile, setSkinProfile }) {
   // Single-select steps (skin type, sensitivity, budget, routine length)
   // require an answer; multi-select steps (concerns, exclusions) don't.
   const isAnswered = current.multi || answers[current.key] !== null;
+  const progressPct = Math.round(((step + 1) / STEPS.length) * 100);
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "48px 24px 72px" }}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--sage)", marginBottom: 8 }}>
-        Step {step + 1} of {STEPS.length}
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "56px 24px 80px" }}>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+          <span className="ss-eyebrow">Question {step + 1} of {STEPS.length}</span>
+        </div>
+        <div className="ss-bar-track">
+          <div className="ss-bar-fill" style={{ width: `${progressPct}%`, background: "var(--forest)" }} />
+        </div>
       </div>
-      <div className="ss-card ss-fade" style={{ padding: 32 }}>
-        <h1 className="ss-serif" style={{ fontSize: 24, fontWeight: 600, marginBottom: 20 }}>{current.label}</h1>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 28 }}>
+
+      <div className="ss-card ss-fade" style={{ padding: "36px 32px" }}>
+        <h1 className="ss-serif" style={{ fontSize: "clamp(22px,3vw,26px)", fontWeight: 600, marginBottom: 24 }}>{current.label}</h1>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 32 }}>
           {current.options.map((opt) => (
-            <span
+            <button
               key={opt}
-              className="ss-chip"
-              style={{
-                cursor: "pointer",
-                fontSize: 14,
-                padding: "10px 18px",
-                background: isSelected(opt) ? "var(--forest)" : "var(--sage-lt)",
-                color: isSelected(opt) ? "#fff" : "var(--forest-dk)",
-              }}
+              type="button"
+              className={`ss-option ${isSelected(opt) ? "selected" : ""}`}
+              aria-pressed={isSelected(opt)}
               onClick={() => (current.multi ? toggleMulti(current.key, opt) : selectSingle(current.key, opt))}
             >
               {opt}
-            </span>
+            </button>
           ))}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -87,7 +89,7 @@ export default function QuizPage({ setView, skinProfile, setSkinProfile }) {
           </button>
           <button
             className="ss-btn ss-btn-primary"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: isAnswered ? 1 : 0.5, cursor: isAnswered ? "pointer" : "not-allowed" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: isAnswered ? 1 : 0.5 }}
             onClick={next}
             disabled={!isAnswered}
           >

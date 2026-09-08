@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Legend,
 } from "recharts";
-import { X, Sparkles, Check, Sliders, AlertTriangle } from "lucide-react";
+import { X, Sparkles, Check, Sliders, AlertTriangle, Trophy } from "lucide-react";
 import { PRODUCTS, SKIN_TYPES, CONCERNS, BUDGETS } from "../data/products.js";
 import { generateScoutingReport } from "../lib/ai.js";
 import { isRealProductId } from "../lib/productId.js";
@@ -156,74 +156,78 @@ export default function ComparePage({ compareIds, setCompareId, skinProfile }) {
   })) : [];
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 24px 72px" }}>
-      <h1 className="ss-serif" style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Head-to-head comparison</h1>
-      <p style={{ color: "var(--ink-soft)", marginBottom: 26 }}>Pick two products from Discover, then generate a personalised scouting report.</p>
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 80px" }}>
+      <span className="ss-eyebrow">Compare</span>
+      <h1 className="ss-serif" style={{ fontSize: "clamp(28px,4vw,32px)", fontWeight: 600, margin: "10px 0 8px" }}>Head-to-head comparison</h1>
+      <p style={{ color: "var(--ink-soft)", marginBottom: 32 }}>Pick two products from Discover, then generate a personalised scouting report.</p>
 
       {compareIds.length < 2 || !viewA || !viewB ? (
-        <div className="ss-card" style={{ padding: 40, textAlign: "center", color: "var(--ink-soft)" }}>
+        <div className="ss-card" style={{ padding: 48, textAlign: "center", color: "var(--ink-soft)" }}>
           <p style={{ marginBottom: 10 }}>
-            {loading ? "Loading your selected products…" : `You've added ${compareIds.length}/2 products to the comparison.`}
+            {loading ? "Loading your matchup…" : `You've added ${compareIds.length}/2 products to the comparison.`}
           </p>
           {!loading && <p style={{ fontSize: 13.5 }}>Head to <b>Discover</b> and click "Add to comparison" on two products to build your matchup.</p>}
         </div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 18, alignItems: "center", marginBottom: 26 }} className="ss-vs-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 20, alignItems: "center", marginBottom: 32 }} className="ss-vs-grid">
             {[viewA, viewB].map((p) => (
-              <div key={p.id} className="ss-card" style={{ padding: 20, textAlign: "center", position: "relative" }}>
+              <div key={p.id} className="ss-card" style={{ padding: 26, textAlign: "center", position: "relative" }}>
                 <button onClick={() => setCompareId(p.id, true)} style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: "var(--ink-soft)" }}><X size={16} /></button>
                 <ProductImage src={p.image_url} name={p.name} />
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sage)" }}>{p.brand || "Unknown brand"}</div>
-                <div className="ss-serif" style={{ fontSize: 18, fontWeight: 600 }}>{p.name}</div>
-                <div style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "4px 0 10px" }}>
+                <div className="ss-serif" style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{p.name}</div>
+                <div style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "4px 0 14px" }}>
                   {[p.category, p.price != null ? `€${p.price}` : null].filter(Boolean).join(" · ")}
                 </div>
                 {typeof p.overallScore === "number" ? (
-                  <ScorePill score={p.overallScore} size="lg" />
+                  <>
+                    <span className="ss-eyebrow" style={{ display: "block", marginBottom: 6 }}>Overall score</span>
+                    <ScorePill score={p.overallScore} size="lg" />
+                  </>
                 ) : (
                   <span style={{ fontSize: 12, color: "var(--ink-soft)", fontStyle: "italic" }}>Limited data</span>
                 )}
               </div>
             ))}
-            <div className="ss-serif" style={{ textAlign: "center", fontSize: 22, fontWeight: 600, color: "var(--burgundy)" }}>VS</div>
+            <div className="ss-serif" style={{ textAlign: "center", fontSize: 20, fontWeight: 600, color: "var(--sage)" }}>VS</div>
           </div>
 
-          <div className="ss-card" style={{ padding: 24, marginBottom: 24 }}>
-            <h3 className="ss-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 16 }}>Stat-by-stat</h3>
+          <div className="ss-card" style={{ padding: 28, marginBottom: 28 }}>
+            <h3 className="ss-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 20 }}>Stat-by-stat</h3>
             {COMPARISON_STATS.map((stat) => {
               const av = viewA.stats[stat.key];
               const bv = viewB.stats[stat.key];
               const aWins = typeof av === "number" && typeof bv === "number" && av > bv;
               const bWins = typeof av === "number" && typeof bv === "number" && bv > av;
               return (
-                <div key={stat.key} style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <div style={{ textAlign: "right", fontWeight: aWins ? 800 : 500, color: aWins ? "var(--forest)" : "var(--ink)" }}>
-                    {typeof av === "number" ? av : "N/A"}{aWins && " 🏆"}
+                <div key={stat.key} style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div style={{ textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontWeight: aWins ? 700 : 500, color: aWins ? "var(--forest)" : "var(--ink)" }}>
+                    {typeof av === "number" ? av : "N/A"}{aWins && <Trophy size={12} color="var(--sage)" />}
                   </div>
                   <div style={{ textAlign: "center", fontSize: 12, color: "var(--ink-soft)", fontWeight: 600 }}>{stat.label}</div>
-                  <div style={{ textAlign: "left", fontWeight: bWins ? 800 : 500, color: bWins ? "var(--forest)" : "var(--ink)" }}>
-                    {bWins && "🏆 "}{typeof bv === "number" ? bv : "N/A"}
+                  <div style={{ textAlign: "left", display: "flex", alignItems: "center", gap: 5, fontWeight: bWins ? 700 : 500, color: bWins ? "var(--forest)" : "var(--ink)" }}>
+                    {bWins && <Trophy size={12} color="var(--sage)" />}{typeof bv === "number" ? bv : "N/A"}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="ss-card" style={{ padding: 24, marginBottom: 24 }}>
-            <h3 className="ss-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 10 }}>Radar comparison</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
+          <div className="ss-card" style={{ padding: 28, marginBottom: 28 }}>
+            <h3 className="ss-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 16 }}>Radar comparison</h3>
+            <ResponsiveContainer width="100%" height={320}>
+              <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
                 <PolarGrid stroke="var(--line)" />
                 <PolarAngleAxis dataKey="stat" tick={{ fontSize: 10.5, fill: "var(--ink-soft)" }} />
-                <Radar name={viewA.brand || viewA.name} dataKey="A" stroke="var(--forest)" fill="var(--forest)" fillOpacity={0.3} />
-                <Radar name={viewB.brand || viewB.name} dataKey="B" stroke="var(--burgundy)" fill="var(--burgundy)" fillOpacity={0.25} />
-                <Legend />
+                <Radar name={viewA.brand || viewA.name} dataKey="A" stroke="var(--forest)" fill="var(--forest)" fillOpacity={0.25} />
+                <Radar name={viewB.brand || viewB.name} dataKey="B" stroke="var(--burgundy)" fill="var(--burgundy)" fillOpacity={0.18} />
+                <Legend wrapperStyle={{ fontSize: 12.5, paddingTop: 14 }} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }} className="ss-profile-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 28 }} className="ss-profile-grid">
             <InfoBlock
               title={`${viewA.brand || viewA.name} — key ingredients`}
               items={viewA.keyIngredientsLimited ? ["Ingredient data limited"] : (viewA.keyIngredients.length ? viewA.keyIngredients : ["No ingredient data available"])}
@@ -246,14 +250,14 @@ export default function ComparePage({ compareIds, setCompareId, skinProfile }) {
             />
           </div>
 
-          <div className="ss-card" style={{ padding: 24, marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <div className="ss-card" style={{ padding: 28, marginBottom: 28 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
               <Sliders size={16} color="var(--forest)" /><h3 className="ss-serif" style={{ fontSize: 17, fontWeight: 600 }}>Personalise your report</h3>
             </div>
 
             {mixedTypes ? (
               <p style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>
-                A comparison report currently needs two products of the same type — pick two from Discover, or two from Home's top picks.
+                A comparison report currently needs two products of the same type — pick two from Discover to build your matchup.
               </p>
             ) : (
               <>

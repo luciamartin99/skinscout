@@ -39,9 +39,15 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
     .filter((c) => c.id !== product?.id)
     .slice(0, 3);
 
+  const stepLabel = String(step.step).padStart(2, "0");
+  const categoryLabel = step.category ? step.category.charAt(0).toUpperCase() + step.category.slice(1) : "";
+
   return (
-    <div className="ss-card ss-fade" style={{ padding: 16, marginBottom: 14 }}>
-      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+    <div className="ss-card ss-fade" style={{ padding: 20, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, paddingTop: 2 }}>
+          <span className="ss-serif" style={{ fontSize: 22, fontWeight: 600, color: "var(--sage)", lineHeight: 1 }}>{stepLabel}</span>
+        </div>
         <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 12, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {product?.image_url ? (
             <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
@@ -50,9 +56,7 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
           )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sage)", textTransform: "uppercase", letterSpacing: 0.3 }}>
-            Step {step.step} · {step.category}
-          </div>
+          <div className="ss-eyebrow" style={{ marginBottom: 4 }}>{categoryLabel}</div>
           <div className="ss-serif" style={{ fontSize: 16.5, fontWeight: 600, lineHeight: 1.25 }}>
             {product ? `${product.brand ? `${product.brand} — ` : ""}${product.name}` : "No suitable product found for this step."}
           </div>
@@ -63,7 +67,7 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 10 }}>
+      <div style={{ marginTop: 12 }}>
         <button
           className="ss-btn ss-btn-outline"
           style={{ fontSize: 12.5, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6 }}
@@ -96,12 +100,15 @@ function RoutineStep({ step, sectionKey, index, routine, onSwap }) {
   );
 }
 
-function RoutineSection({ title, icon, sectionKey, steps, routine, onSwap }) {
+function RoutineSection({ title, subtitle, icon, sectionKey, steps, routine, onSwap }) {
   return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+    <div style={{ marginBottom: 40 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, paddingBottom: 14, borderBottom: "1px solid var(--line)" }}>
         {icon}
-        <h2 className="ss-serif" style={{ fontSize: 20, fontWeight: 600 }}>{title}</h2>
+        <div>
+          <h2 className="ss-serif" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}>{title}</h2>
+          <span className="ss-eyebrow">{subtitle}</span>
+        </div>
       </div>
       {steps.length === 0 && <p style={{ color: "var(--ink-soft)", fontSize: 14 }}>No steps for this time of day.</p>}
       {steps.map((step, index) => (
@@ -116,7 +123,7 @@ export default function RoutinePage({ setView }) {
 
   if (!routine) {
     return (
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "48px 24px 72px", textAlign: "center" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "56px 24px 80px", textAlign: "center" }}>
         <p style={{ color: "var(--ink-soft)", marginBottom: 20 }}>No routine generated yet.</p>
         <button className="ss-btn ss-btn-primary" onClick={() => setView("quiz-summary")}>Back to my profile</button>
       </div>
@@ -146,23 +153,27 @@ export default function RoutinePage({ setView }) {
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 72px" }}>
-      <h1 className="ss-serif" style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Your SkinScout routine</h1>
-      <p style={{ color: "var(--ink-soft)", marginBottom: 24 }}>{routine.profileSummary}</p>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "56px 24px 80px" }}>
+      <span className="ss-eyebrow">Your routine</span>
+      <h1 className="ss-serif" style={{ fontSize: "clamp(28px,4vw,34px)", fontWeight: 600, margin: "10px 0 20px" }}>Your SkinScout routine</h1>
+
+      <div className="ss-card ss-fade" style={{ padding: "22px 24px", marginBottom: 40, background: "var(--sage-lt)", border: "1px solid var(--line)" }}>
+        <p style={{ color: "var(--ink)", lineHeight: 1.6, margin: 0 }}>{routine.profileSummary}</p>
+      </div>
 
       {/* No warning/diagnostic panel here by design — validation still runs
           (see recomputeWarnings above and api/generate-routine.js), it's
           just never surfaced in this UI. A generated routine is shown as-is. */}
 
-      <RoutineSection title="Morning" icon={<Sun size={18} color="var(--forest)" />} sectionKey="morning" steps={routine.morning || []} routine={routine} onSwap={handleSwap} />
-      <RoutineSection title="Evening" icon={<Moon size={18} color="var(--forest)" />} sectionKey="evening" steps={routine.evening || []} routine={routine} onSwap={handleSwap} />
+      <RoutineSection title="Morning" subtitle="AM routine" icon={<Sun size={18} color="var(--forest)" />} sectionKey="morning" steps={routine.morning || []} routine={routine} onSwap={handleSwap} />
+      <RoutineSection title="Evening" subtitle="PM routine" icon={<Moon size={18} color="var(--forest)" />} sectionKey="evening" steps={routine.evening || []} routine={routine} onSwap={handleSwap} />
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
         <button className="ss-btn ss-btn-outline" onClick={() => setView("myskin")}>Back to My Skin</button>
         <button className="ss-btn ss-btn-outline" onClick={() => setView("discover")}>Browse Products</button>
       </div>
 
-      <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 24, fontStyle: "italic" }}>
+      <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 28, fontStyle: "italic", lineHeight: 1.5 }}>
         SkinScout estimates only, not medical advice. Patch-test new products and consult a professional for persistent concerns.
       </p>
     </div>

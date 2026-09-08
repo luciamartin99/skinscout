@@ -69,7 +69,7 @@ export default function SkinScoutApp() {
     <div className="ss-root">
       <style>{FONTS_CSS}</style>
       <NavBar view={view} setView={setView} compareCount={compareIds.length} />
-      {view === "home" && <HomePage setView={setView} onCompare={onCompare} compareIds={compareIds} onView={onView} />}
+      {view === "home" && <HomePage setView={setView} />}
       {view === "discover" && <DiscoverPage onCompare={onCompare} compareIds={compareIds} setView={setView} onView={onView} />}
       {view === "profile" && isRealProductId(selectedId) && (
         <RealProductProfilePage productId={selectedId} setView={setView} onCompare={onCompare} compareIds={compareIds} />

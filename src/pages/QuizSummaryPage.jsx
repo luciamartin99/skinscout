@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { saveRoutine } from "../lib/routineStorage.js";
 
 const FIELD_LABELS = {
@@ -45,7 +45,7 @@ export default function QuizSummaryPage({ setView, skinProfile, clearSkinProfile
 
   if (!skinProfile?.skinType) {
     return (
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "48px 24px 72px", textAlign: "center" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "56px 24px 80px", textAlign: "center" }}>
         <p style={{ color: "var(--ink-soft)", marginBottom: 20 }}>No skin profile saved yet.</p>
         <button className="ss-btn ss-btn-primary" onClick={() => setView("quiz")}>Take the quiz</button>
       </div>
@@ -53,35 +53,30 @@ export default function QuizSummaryPage({ setView, skinProfile, clearSkinProfile
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "48px 24px 72px" }}>
-      <h1 className="ss-serif" style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Your skin profile</h1>
-      <p style={{ color: "var(--ink-soft)", marginBottom: 26 }}>Saved on this device — you can retake the quiz any time.</p>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "56px 24px 80px" }}>
+      <span className="ss-eyebrow">Quiz complete</span>
+      <h1 className="ss-serif" style={{ fontSize: "clamp(28px,4vw,34px)", fontWeight: 600, margin: "10px 0 8px" }}>Your skin profile</h1>
+      <p style={{ color: "var(--ink-soft)", marginBottom: 32 }}>Saved on this device — you can retake the quiz any time.</p>
 
-      <div className="ss-card ss-fade" style={{ padding: 26, marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ShieldCheck size={20} color="#F6F2EA" />
-          </div>
-          <span className="ss-serif" style={{ fontSize: 18, fontWeight: 600 }}>Quiz results</span>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: 32 }}>
         {Object.keys(FIELD_LABELS).map((key) => (
-          <div key={key} style={{ display: "flex", justifyContent: "space-between", gap: 16, padding: "10px 0", borderTop: "1px solid var(--line)" }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-soft)" }}>{FIELD_LABELS[key]}</span>
-            <span style={{ fontSize: 14, textAlign: "right" }}>{formatValue(skinProfile[key])}</span>
+          <div key={key} className="ss-card ss-fade" style={{ padding: "20px 22px" }}>
+            <div className="ss-eyebrow" style={{ marginBottom: 8 }}>{FIELD_LABELS[key]}</div>
+            <div className="ss-serif" style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.3 }}>{formatValue(skinProfile[key])}</div>
           </div>
         ))}
       </div>
 
       {error && <div style={{ marginBottom: 14, fontSize: 13, color: "var(--burgundy)" }}>{error}</div>}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button
           className="ss-btn ss-btn-primary"
-          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 26px" }}
           onClick={generateRoutine}
           disabled={loading}
         >
-          <Sparkles size={16} /> {loading ? "Generating your routine…" : "Generate my routine"}
+          <Sparkles size={16} /> {loading ? "Building your routine…" : "Generate my routine"}
         </button>
         <button
           className="ss-btn ss-btn-outline"
