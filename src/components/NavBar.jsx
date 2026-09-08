@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Award, X, Menu } from "lucide-react";
+import { X, Menu } from "lucide-react";
+import SkinScoutLogo from "./SkinScoutLogo.jsx";
 
 export default function NavBar({ view, setView, compareCount }) {
   const [open, setOpen] = useState(false);
@@ -14,9 +15,7 @@ export default function NavBar({ view, setView, compareCount }) {
     <div style={{ borderBottom: "1px solid var(--line)", background: "rgba(253,246,247,0.92)", position: "sticky", top: 0, zIndex: 30, backdropFilter: "blur(8px)" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => setView("home")}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Award size={18} color="#FFFDFD" />
-          </div>
+          <SkinScoutLogo size={34} />
           <span className="ss-serif" style={{ fontSize: 21, fontWeight: 600 }}>SkinScout</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 30 }} className="ss-desktop-nav">
