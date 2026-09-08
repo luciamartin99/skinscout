@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
-import { Search, Filter } from "lucide-react";
-import { PRODUCTS, SKIN_TYPES, CONCERNS, CATEGORIES } from "../data/products.js";
-import ProductCard from "../components/ProductCard.jsx";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import FilterSelect from "../components/FilterSelect.jsx";
 import { loadRoutine } from "../lib/routineStorage.js";
+
+const CATEGORY_OPTIONS = ["All", "cleanser", "serum", "treatment", "moisturizer", "sunscreen"];
+const SORT_OPTIONS = ["A–Z", "Brand"];
+const PAGE_SIZE = 24;
 
 // Real Supabase products from the last generated routine, exactly as
 // returned by api/generate-routine.js (id/name/brand/image_url/barcode) —
@@ -20,16 +22,22 @@ function getRoutineProducts() {
   return [...seen.values()];
 }
 
+function ProductImage({ src, name, size = 52 }) {
+  return (
+    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: 10, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {src ? (
+        <img src={src} alt={name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      ) : (
+        <span style={{ fontSize: 10, color: "var(--ink-soft)" }}>No image</span>
+      )}
+    </div>
+  );
+}
+
 function RoutineProductCard({ product }) {
   return (
     <div className="ss-card" style={{ padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
-      <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 10, overflow: "hidden", background: "var(--sage-lt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {product.image_url ? (
-          <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-        ) : (
-          <span style={{ fontSize: 10, color: "var(--ink-soft)" }}>No image</span>
-        )}
-      </div>
+      <ProductImage src={product.image_url} name={product.name} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--sage)" }}>{product.brand}</div>
         <div className="ss-serif" style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{product.name}</div>
@@ -38,42 +46,87 @@ function RoutineProductCard({ product }) {
   );
 }
 
-export default function DiscoverPage({ onView, onCompare, compareIds }) {
-  const routineProducts = useMemo(getRoutineProducts, []);
-  const [q, setQ] = useState("");
-  const [category, setCategory] = useState("All");
-  const [skinType, setSkinType] = useState("All");
-  const [concern, setConcern] = useState("All");
-  const [price, setPrice] = useState("All");
-  const [fragFree, setFragFree] = useState(false);
-  const [sort, setSort] = useState("Highest rated");
-  const [showFilters, setShowFilters] = useState(false);
+// Real catalog card — deliberately shows only what's real: image, brand,
+// name, canonical category, barcode, and whether an ingredient list is on
+// file. No 0-100 score, no tags, no price — this app has no real price
+// data yet, and inventing one would be exactly the kind of fictional data
+// this rework is removing.
+function RealProductCard({ product }) {
+  return (
+    <div className="ss-card ss-fade" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", gap: 12 }}>
+        <ProductImage src={product.image_url} name={product.name} size={56} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--sage)", letterSpacing: 0.2 }}>{product.brand || "Unknown brand"}</div>
+          <div className="ss-serif" style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{product.name}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {product.category && <span className="ss-chip">{product.category}</span>}
+        {product.ingredientCount > 0 && <span className="ss-chip">{product.ingredientCount} ingredients listed</span>}
+      </div>
+      {product.barcode && <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>Barcode: {product.barcode}</div>}
+    </div>
+  );
+}
 
-  const filtered = useMemo(() => {
-    let list = PRODUCTS.filter((p) => {
-      if (q && !(`${p.brand} ${p.name}`.toLowerCase().includes(q.toLowerCase()))) return false;
-      if (category !== "All" && p.category !== category) return false;
-      if (skinType !== "All" && !p.skinTypes.includes(skinType)) return false;
-      if (concern !== "All" && !p.concerns.includes(concern)) return false;
-      if (fragFree && !p.fragranceFree) return false;
-      if (price === "Budget" && p.price > 20) return false;
-      if (price === "Mid-range" && (p.price <= 20 || p.price > 30)) return false;
-      if (price === "Premium" && p.price <= 30) return false;
-      return true;
+export default function DiscoverPage() {
+  const routineProducts = useMemo(getRoutineProducts, []);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+  const [sort, setSort] = useState("A–Z");
+  const [page, setPage] = useState(1);
+
+  const [status, setStatus] = useState("loading"); // loading | done | error
+  const [result, setResult] = useState({ products: [], total: 0, totalPages: 1 });
+
+  // Debounce the search box so we don't fire a request per keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  // Reset to page 1 whenever a filter changes.
+  useEffect(() => setPage(1), [search, category, sort]);
+
+  // requestIdRef guards against a stale response overwriting a newer one —
+  // changing a filter resets `page` in the effect above, which fires this
+  // effect a second time (old page, then page 1) before the reset commits.
+  // Only the response for the LATEST fired request is ever applied.
+  const requestIdRef = useRef(0);
+  useEffect(() => {
+    const requestId = ++requestIdRef.current;
+    setStatus("loading");
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+      sort: sort === "Brand" ? "brand" : "name",
     });
-    const sorters = {
-      "Highest rated": (a, b) => b.rating - a.rating,
-      "Best value": (a, b) => b.stats.value - a.stats.value,
-      "Most hydrating": (a, b) => b.stats.hydration - a.stats.hydration,
-      "Best for sensitive skin": (a, b) => b.stats.sensitivity - a.stats.sensitivity,
-    };
-    return [...list].sort(sorters[sort]);
-  }, [q, category, skinType, concern, price, fragFree, sort]);
+    if (search.trim()) params.set("search", search.trim());
+    if (category !== "All") params.set("category", category);
+
+    fetch(`/api/products?${params.toString()}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error((await res.json()).error || "Request failed");
+        return res.json();
+      })
+      .then((data) => {
+        if (requestId !== requestIdRef.current) return; // a newer request superseded this one
+        setResult(data);
+        setStatus("done");
+      })
+      .catch(() => {
+        if (requestId !== requestIdRef.current) return;
+        setStatus("error");
+      });
+  }, [search, category, sort, page]);
 
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "40px 24px 72px" }}>
       <h1 className="ss-serif" style={{ fontSize: 30, fontWeight: 600, marginBottom: 6 }}>Discover products</h1>
-      <p style={{ color: "var(--ink-soft)", marginBottom: 24 }}>Browse the full SkinScout roster and filter by what your skin needs.</p>
+      <p style={{ color: "var(--ink-soft)", marginBottom: 24 }}>Browse the real SkinScout catalog and filter by category.</p>
 
       {routineProducts.length > 0 && (
         <div style={{ marginBottom: 32 }}>
@@ -84,42 +137,50 @@ export default function DiscoverPage({ onView, onCompare, compareIds }) {
         </div>
       )}
 
+      <h2 className="ss-serif" style={{ fontSize: 19, fontWeight: 600, marginBottom: 12 }}>All products</h2>
+
       <div style={{ position: "relative", marginBottom: 16, maxWidth: 480 }}>
         <Search size={17} style={{ position: "absolute", left: 16, top: 14, color: "var(--ink-soft)" }} />
-        <input className="ss-input" style={{ paddingLeft: 42 }} placeholder="Search cleansers, serums, moisturisers…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input
+          className="ss-input" style={{ paddingLeft: 42 }}
+          placeholder="Search by product name or brand…"
+          value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
+        />
       </div>
 
-      <button className="ss-btn ss-btn-outline" style={{ marginBottom: 16, display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px" }} onClick={() => setShowFilters(!showFilters)}>
-        <Filter size={15} /> Filters {showFilters ? "▴" : "▾"}
-      </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+        <FilterSelect label="Category" value={category} setValue={setCategory} options={CATEGORY_OPTIONS} />
+        <FilterSelect label="Sort" value={sort} setValue={setSort} options={SORT_OPTIONS} />
+      </div>
 
-      {showFilters && (
-        <div className="ss-card ss-fade" style={{ padding: 20, marginBottom: 24, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 16 }}>
-          <FilterSelect label="Category" value={category} setValue={setCategory} options={["All", ...CATEGORIES]} />
-          <FilterSelect label="Skin type" value={skinType} setValue={setSkinType} options={["All", ...SKIN_TYPES]} />
-          <FilterSelect label="Primary concern" value={concern} setValue={setConcern} options={["All", ...CONCERNS]} />
-          <FilterSelect label="Price range" value={price} setValue={setPrice} options={["All", "Budget", "Mid-range", "Premium"]} />
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--ink-soft)", marginTop: 22 }}>
-            <input type="checkbox" checked={fragFree} onChange={(e) => setFragFree(e.target.checked)} /> Fragrance-free only
-          </label>
-        </div>
+      {status === "loading" && <p style={{ color: "var(--ink-soft)" }}>Loading products…</p>}
+      {status === "error" && <p style={{ color: "var(--burgundy)" }}>Products couldn't be loaded right now.</p>}
+
+      {status === "done" && (
+        <>
+          <div style={{ fontSize: 13.5, color: "var(--ink-soft)", marginBottom: 14 }}>{result.total} product{result.total === 1 ? "" : "s"}</div>
+
+          {result.products.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 60, color: "var(--ink-soft)" }}>No products found.</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18, marginBottom: 24 }}>
+              {result.products.map((p) => <RealProductCard key={p.id} product={p} />)}
+            </div>
+          )}
+
+          {result.totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14 }}>
+              <button className="ss-btn ss-btn-outline" style={{ padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 4 }} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <ChevronLeft size={15} /> Prev
+              </button>
+              <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>Page {result.page} of {result.totalPages}</span>
+              <button className="ss-btn ss-btn-outline" style={{ padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 4 }} disabled={page >= result.totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+        </>
       )}
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
-        <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>{filtered.length} products</span>
-        <FilterSelect label="Sort" value={sort} setValue={setSort} options={["Highest rated", "Best value", "Most hydrating", "Best for sensitive skin"]} inline />
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
-        {filtered.map((p) => (
-          <ProductCard key={p.id} product={p} onView={onView} onCompare={onCompare} compareActive={compareIds.includes(p.id)} />
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 60, color: "var(--ink-soft)" }}>
-            No products match those filters yet. Try widening your search.
-          </div>
-        )}
-      </div>
     </div>
   );
 }
